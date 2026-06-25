@@ -2,7 +2,7 @@
 
 v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shifts focus from **detecting** failures to **automatically remediating** them — and building the feedback loop that tells you whether the fix worked.
 
-## Implemented (v2.0)
+## Implemented (v2.0 / v3.0)
 
 | Module | Detects | Status |
 |---|---|---|
@@ -12,6 +12,7 @@ v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shi
 | storage_smart.sh | NVMe SMART health (sudo fallback) | Delivered |
 | fs_integrity.sh | BTRFS corruption, EXT4 state (sudo fallback) | Delivered |
 | audio_sof.sh | SOF DSP panic, IPC error -22, pipeline resume failure | Delivered |
+| display_blackout.sh | eDP disconnection, backlight=0, wrong ACPI sleep state, modesetting errors | Delivered |
 | coredump_analysis.sh | systemd-coredump crash counts, signal profiling | Delivered |
 | wifi_firmware.sh | ath11k/iwlwifi firmware crash, wlan0 state | Delivered |
 | gamescope_session.sh | Session restarts, Vulkan descriptor failures | Delivered |

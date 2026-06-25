@@ -39,8 +39,9 @@ sync
 "${MODULES_DIR}/storage_smart.sh" > "${LOG_DIR}/module_storage.log" 2>&1 &
 "${MODULES_DIR}/fs_integrity.sh" > "${LOG_DIR}/module_fs.log" 2>&1 &
 
-# Software/OS diagnostic modules (v2.0)
+# Software/OS diagnostic modules (v2.0 / v3.0)
 "${MODULES_DIR}/audio_sof.sh" > "${LOG_DIR}/module_audio.log" 2>&1 &
+"${MODULES_DIR}/display_blackout.sh" > "${LOG_DIR}/module_display.log" 2>&1 &
 "${MODULES_DIR}/coredump_analysis.sh" > "${LOG_DIR}/module_coredump.log" 2>&1 &
 "${MODULES_DIR}/wifi_firmware.sh" > "${LOG_DIR}/module_wifi.log" 2>&1 &
 "${MODULES_DIR}/gamescope_session.sh" > "${LOG_DIR}/module_gamescope.log" 2>&1 &

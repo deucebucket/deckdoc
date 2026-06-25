@@ -74,10 +74,10 @@ echo ""
 echo "--- Test 5: Module count ---"
 MODULE_COUNT=$(ls -1 "${DECKDOC_DIR}"/modules/*.sh | wc -l)
 echo "  Total modules: ${MODULE_COUNT}"
-if [ "$MODULE_COUNT" -eq 15 ]; then
-    echo "  PASS: Expected 15 modules present (14 diagnostic + 1 remediation)."
+if [ "$MODULE_COUNT" -eq 16 ]; then
+    echo "  PASS: Expected 16 modules present (15 diagnostic + 1 remediation)."
 else
-    echo "  WARNING: Expected 15 modules, found ${MODULE_COUNT}."
+    echo "  WARNING: Expected 16 modules, found ${MODULE_COUNT}."
 fi
 
 # === Test 6: deckdoc.sh launches all modules ===
@@ -85,10 +85,10 @@ echo ""
 echo "--- Test 6: Parallel module launch check ---"
 LAUNCH_COUNT=$(grep -c '"${MODULES_DIR}/.*\.sh".*&[[:space:]]*$' "${DECKDOC_DIR}/deckdoc.sh" 2>/dev/null || echo 0)
 echo "  Module launches in deckdoc.sh: ${LAUNCH_COUNT}"
-if [ "$LAUNCH_COUNT" -eq 14 ]; then
-    echo "  PASS: All 14 diagnostic modules launched in parallel."
+if [ "$LAUNCH_COUNT" -eq 15 ]; then
+    echo "  PASS: All 15 diagnostic modules launched in parallel."
 else
-    echo "  FAIL: Expected 14 module launches, found ${LAUNCH_COUNT}."
+    echo "  FAIL: Expected 15 module launches, found ${LAUNCH_COUNT}."
     exit 1
 fi
 

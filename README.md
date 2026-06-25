@@ -17,8 +17,9 @@ deckdoc/
 │   ├── thermal_fan.sh        # hwmon temp sensors + fan RPM
 │   ├── storage_smart.sh      # NVMe SMART health (smartctl + sudo fallback)
 │   └── fs_integrity.sh       # BTRFS device stats + EXT4 state (btrfs + dumpe2fs)
-│   # Software/OS diagnostics (v2.0)
+│   # Software/OS diagnostics (v2.0 / v3.0)
 │   ├── audio_sof.sh          # SOF DSP panic detection (IPC error -22)
+│   ├── display_blackout.sh   # Screen blackout diagnosis (DPMS, sleep state, backlight)
 │   ├── coredump_analysis.sh  # systemd-coredump crash counting & profiling
 │   ├── wifi_firmware.sh      # ath11k/iwlwifi post-resume failure
 │   ├── gamescope_session.sh  # Gamescope core dump & session restarts
@@ -50,7 +51,7 @@ sudo ./deckdoc.sh --fix
 
 All output lands in `logs/` — one file per module plus a consolidated master report.
 
-## Detected Failure Modes (14 modules)
+## Detected Failure Modes (15 modules)
 
 | Failure Mode | Module | Detection Method |
 |---|---|---|
@@ -67,6 +68,7 @@ All output lands in `logs/` — one file per module plus a consolidated master r
 | **BTRFS Corruption** | fs_integrity.sh | `btrfs device stats` non-zero counters |
 | **EXT4 State** | fs_integrity.sh | `dumpe2fs -h` filesystem state flags |
 | **SOF DSP Panic** | audio_sof.sh | IPC error -22, DSP panic, pipeline resume failure |
+| **Display Blackout** | display_blackout.sh | eDP disconnection, backlight=0, wrong ACPI sleep state |
 | **Core Dump Analysis** | coredump_analysis.sh | SIGTRAP/SIGABRT/SIGSEGV counts by binary |
 | **WiFi Firmware Crash** | wifi_firmware.sh | ath11k firmware errors, wlan0 DOWN state |
 | **Gamescope Restarts** | gamescope_session.sh | Session restart count, Vulkan descriptor failures |
@@ -93,7 +95,7 @@ Remediation never runs without the `--fix` flag.
 The Steam Deck's aggressive PMIC and SMU protective mechanisms can trigger instantaneous power loss or kernel panic within seconds of boot. Traditional diagnostic tools fail because they rely on system stability to aggregate and format results.
 
 DeckDoc's approach:
-- **Parallel execution** — all 14 diagnostic modules launch simultaneously via `&` + `wait`; remediation runs sequentially after
+- **Parallel execution** — all 15 diagnostic modules launch simultaneously via `&` + `wait`; remediation runs sequentially after
 - **Synchronous I/O** — `sync` invoked after every discrete hardware read
 - **Trap handler** — `panic_sync` registered on EXIT/HUP/INT/QUIT/TERM
 - **No daemonization** — runs once, terminates, leaves no persistent process
