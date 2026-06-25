@@ -2,7 +2,7 @@
 
 v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shifts focus from **detecting** failures to **automatically remediating** them — and building the feedback loop that tells you whether the fix worked.
 
-## Implemented (v2.0)
+## Implemented (v2.0 / v3.0)
 
 | Module | Detects | Status |
 |---|---|---|
@@ -12,6 +12,7 @@ v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shi
 | storage_smart.sh | NVMe SMART health (sudo fallback) | Delivered |
 | fs_integrity.sh | BTRFS corruption, EXT4 state (sudo fallback) | Delivered |
 | audio_sof.sh | SOF DSP panic, IPC error -22, pipeline resume failure | Delivered |
+| display_blackout.sh | eDP disconnection, backlight=0, wrong ACPI sleep state, modesetting errors | Delivered |
 | coredump_analysis.sh | systemd-coredump crash counts, signal profiling | Delivered |
 | wifi_firmware.sh | ath11k/iwlwifi firmware crash, wlan0 state | Delivered |
 | gamescope_session.sh | Session restarts, Vulkan descriptor failures | Delivered |
@@ -21,13 +22,19 @@ v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shi
 | acpi_pm_state.sh | Suspend/resume failures, fan-after-wake bug | Delivered |
 | dxvk_page_fault.sh | GPU page fault classification (CB/DB/CPF) | Delivered |
 
-## v3.0 — Remediation Modules
+## Delivered (v3.0)
+
+| Module | Action | Status |
+|---|---|---|
+| **rem_audio_sof.sh** | Reload snd_sof_amd_vangogh, verify aplay recovery, PRE_CHECK/BACKUP/EXECUTE/VERIFY/REPORT lifecycle | Delivered |
+| deckdoc.sh --fix flag | Runs remediation modules after diagnostics, requires explicit flag | Delivered |
+
+## v3.0 — Remediation Modules (Remaining)
 
 ### P0 — Must Have
 
 | Module | Trigger | Remediation Action |
 |---|---|---|
-| **rem_audio_sof.sh** | audio_sof.sh: DSP panic or IPC -22 detected | `sudo modprobe -r snd_sof_amd_vangogh && sudo modprobe snd_sof_amd_vangogh`, then verify `aplay -l` recovers. Report success/failure. |
 | **rem_wifi_firmware.sh** | wifi_firmware.sh: wlan0 DOWN or firmware crash | `sudo modprobe -r ath11k_pci && sudo modprobe ath11k_pci`, then verify `ip link show wlan0` shows UP. |
 | **rem_coredump_cleanup.sh** | coredump_analysis.sh: >100 dumps | `sudo rm /var/lib/systemd/coredump/*.zst` older than 30 days, report freed space. |
 | **rem_gpu_reset.sh** | gpu_apu.sh: GPU reset failed (hard lock) | Attempt `sudo sysfs` power cycle of GPU via `device_power_state`, fall back to advising full reboot. |

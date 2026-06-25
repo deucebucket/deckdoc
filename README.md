@@ -1,15 +1,15 @@
-# DeckDoc v2.0.0
+# DeckDoc v3.0.0
 
-**Bare-Metal Diagnostic Scaffold for SteamOS / Steam Deck**
+**Bare-Metal Diagnostic + Remediation Scaffold for SteamOS / Steam Deck**
 
-Hardware telemetry and software crash analysis designed for the Steam Deck's unique failure modes — the 200/400MHz APU lock, PMIC voltage desync, BTRFS silent corruption, SOF DSP panic, and unrecoverable amdgpu pipeline hangs. Executes 14 diagnostic modules in parallel with synchronous I/O (`sync` after every read) so that if the device suffers a kernel panic or power loss during extraction, the maximum diagnostic data has already been committed to persistent storage.
+Hardware telemetry, software crash analysis, and automated remediation designed for the Steam Deck's unique failure modes — the 200/400MHz APU lock, PMIC voltage desync, BTRFS silent corruption, SOF DSP panic, and unrecoverable amdgpu pipeline hangs. Executes 14 diagnostic modules in parallel with synchronous I/O (`sync` after every read) so that if the device suffers a kernel panic or power loss during extraction, the maximum diagnostic data has already been committed to persistent storage. Optionally runs remediation modules with the `--fix` flag.
 
 ## Architecture
 
 ```
 deckdoc/
 ├── setup.sh                  # Environment scaffold + permissions
-├── deckdoc.sh                # Parallel bare-metal runner with panic_sync trap
+├── deckdoc.sh                # Parallel runner + remediation dispatcher (--fix)
 ├── modules/
 │   # Hardware telemetry (v1.x)
 │   ├── gpu_apu.sh            # amdgpu ring timeout + CPU/GPU freq lock detection
@@ -17,8 +17,9 @@ deckdoc/
 │   ├── thermal_fan.sh        # hwmon temp sensors + fan RPM
 │   ├── storage_smart.sh      # NVMe SMART health (smartctl + sudo fallback)
 │   └── fs_integrity.sh       # BTRFS device stats + EXT4 state (btrfs + dumpe2fs)
-│   # Software/OS diagnostics (v2.0)
+│   # Software/OS diagnostics (v2.0 / v3.0)
 │   ├── audio_sof.sh          # SOF DSP panic detection (IPC error -22)
+│   ├── display_blackout.sh   # Screen blackout diagnosis (DPMS, sleep state, backlight)
 │   ├── coredump_analysis.sh  # systemd-coredump crash counting & profiling
 │   ├── wifi_firmware.sh      # ath11k/iwlwifi post-resume failure
 │   ├── gamescope_session.sh  # Gamescope core dump & session restarts
@@ -27,20 +28,22 @@ deckdoc/
 │   ├── mmc_sd_card.sh        # SD card / mmc driver error detection
 │   ├── acpi_pm_state.sh      # ACPI suspend/resume, fan-after-wake failures
 │   └── dxvk_page_fault.sh    # DXVK/VKD3D GPU page fault classification
+│   # Remediation modules (v3.0)
+│   └── rem_audio_sof.sh      # SOF DSP driver reload — PRE_CHECK/BACKUP/EXECUTE/VERIFY/REPORT
 ├── tests/
 │   └── test_runner.sh        # Mock sysfs unit tests
-├── ROADMAP.md                # Next: remediation & self-healing
+├── ROADMAP.md                # Remediation roadmap
 └── .gitignore
 ```
 
 ## Quick Start
 
 ```bash
-# Run as user (some modules restricted)
+# Run diagnostics only
 ./deckdoc.sh
 
-# Run as root for full diagnostic scope
-sudo ./deckdoc.sh
+# Run diagnostics + remediation (requires root)
+sudo ./deckdoc.sh --fix
 
 # Or just setup the environment
 ./setup.sh
@@ -48,7 +51,7 @@ sudo ./deckdoc.sh
 
 All output lands in `logs/` — one file per module plus a consolidated master report.
 
-## Detected Failure Modes (14 modules)
+## Detected Failure Modes (15 modules)
 
 | Failure Mode | Module | Detection Method |
 |---|---|---|
@@ -65,6 +68,7 @@ All output lands in `logs/` — one file per module plus a consolidated master r
 | **BTRFS Corruption** | fs_integrity.sh | `btrfs device stats` non-zero counters |
 | **EXT4 State** | fs_integrity.sh | `dumpe2fs -h` filesystem state flags |
 | **SOF DSP Panic** | audio_sof.sh | IPC error -22, DSP panic, pipeline resume failure |
+| **Display Blackout** | display_blackout.sh | eDP disconnection, backlight=0, wrong ACPI sleep state |
 | **Core Dump Analysis** | coredump_analysis.sh | SIGTRAP/SIGABRT/SIGSEGV counts by binary |
 | **WiFi Firmware Crash** | wifi_firmware.sh | ath11k firmware errors, wlan0 DOWN state |
 | **Gamescope Restarts** | gamescope_session.sh | Session restart count, Vulkan descriptor failures |
@@ -74,12 +78,24 @@ All output lands in `logs/` — one file per module plus a consolidated master r
 | **ACPI Resume Failure** | acpi_pm_state.sh | Fan-after-wake bug, PCI PM resume errors |
 | **GPU Page Faults** | dxvk_page_fault.sh | UTCL2 client ID classification (CB/DB/CPF) |
 
+## Remediation (v3.0)
+
+Run `sudo ./deckdoc.sh --fix` to attempt automatic recovery of detected failures. Each remediation module follows a strict lifecycle:
+
+1. **PRE_CHECK** — Verify the trigger condition still exists (race-safe)
+2. **BACKUP** — Snapshot state before modification
+3. **EXECUTE** — Perform the remediation action (with timeout guard)
+4. **VERIFY** — Confirm the fix worked
+5. **REPORT** — Log outcome: SUCCESS, FAILED, or PARTIAL
+
+Remediation never runs without the `--fix` flag.
+
 ## Bare-Metal Design Philosophy
 
 The Steam Deck's aggressive PMIC and SMU protective mechanisms can trigger instantaneous power loss or kernel panic within seconds of boot. Traditional diagnostic tools fail because they rely on system stability to aggregate and format results.
 
 DeckDoc's approach:
-- **Parallel execution** — all 14 modules launch simultaneously via `&` + `wait`
+- **Parallel execution** — all 15 diagnostic modules launch simultaneously via `&` + `wait`; remediation runs sequentially after
 - **Synchronous I/O** — `sync` invoked after every discrete hardware read
 - **Trap handler** — `panic_sync` registered on EXIT/HUP/INT/QUIT/TERM
 - **No daemonization** — runs once, terminates, leaves no persistent process
