@@ -59,13 +59,13 @@ fi
 sync
 
 echo "--- Page swap activity ---"
-if command -v vmstat >/dev/null 2>&1; then
-    SI=$(vmstat 1 2 2>/dev/null | tail -1 | awk '{print $7}')
-    SO=$(vmstat 1 2 2>/dev/null | tail -1 | awk '{print $8}')
-    echo "  Swap in (si):  ${SI:-0} pages/sec"
-    echo "  Swap out (so): ${SO:-0} pages/sec"
-    if [ "${SI:-0}" -gt 1000 ] || [ "${SO:-0}" -gt 1000 ]; then
-        echo "  WARNING: High swap I/O. System is memory-constrained."
+if [ -f /proc/vmstat ]; then
+    SI=$(awk '/^pswpin/ {print $2}' /proc/vmstat)
+    SO=$(awk '/^pswpout/ {print $2}' /proc/vmstat)
+    echo "  Swap in (pswpin):  ${SI:-0} pages (total since boot)"
+    echo "  Swap out (pswpout): ${SO:-0} pages (total since boot)"
+    if [ "${SI:-0}" -gt 50000 ] || [ "${SO:-0}" -gt 50000 ]; then
+        echo "  WARNING: High cumulative swap I/O. System frequently memory-constrained."
     fi
 fi
 sync

@@ -24,13 +24,23 @@ sync
 
 echo "--- Gamescope session errors (current boot) ---"
 if command -v journalctl >/dev/null 2>&1; then
-    journalctl -u gamescope-session 2>/dev/null --priority=err -n 30 | grep -iE 'error|warn|fail|core dump|terminate|abort' | head -10 || \
-    journalctl --user -u gamescope-session 2>/dev/null --priority=err -n 30 | grep -iE 'error|warn|fail|core dump' | head -10 || \
-    echo "  No gamescope session errors in current boot."
+    SESSION_LOG=$(journalctl -u gamescope-session --priority=err -n 30 2>/dev/null)
+    if [ -z "$SESSION_LOG" ]; then
+        SESSION_LOG=$(journalctl --user -u gamescope-session --priority=err -n 30 2>/dev/null)
+    fi
+    if [ -n "$SESSION_LOG" ]; then
+        echo "$SESSION_LOG" | grep -iE 'error|warn|fail|core dump|terminate|abort' | head -10 || true
+    else
+        echo "  No gamescope session errors in current boot."
+    fi
 
     sync
     echo "--- Session restart count ---"
-    RESTART_COUNT=$(journalctl -u gamescope-session 2>/dev/null | grep -c 'Started\|Starting' || journalctl --user -u gamescope-session 2>/dev/null | grep -c 'Started\|Starting' || echo 0)
+    SESSION_STARTS=$(journalctl -u gamescope-session 2>/dev/null | grep -c 'Started\|Starting' || true)
+    if [ -z "$SESSION_STARTS" ] || [ "$SESSION_STARTS" -eq 0 ]; then
+        SESSION_STARTS=$(journalctl --user -u gamescope-session 2>/dev/null | grep -c 'Started\|Starting' || true)
+    fi
+    RESTART_COUNT="${SESSION_STARTS:-0}"
     echo "  Gamescope session starts: ${RESTART_COUNT} (1 = normal, >1 indicates restarts)"
     if [ "${RESTART_COUNT:-0}" -gt 1 ]; then
         echo "  WARNING: Gamescope session restarted ${RESTART_COUNT} times. Possible compositor instability."

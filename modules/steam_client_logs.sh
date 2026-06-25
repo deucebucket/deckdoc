@@ -28,10 +28,19 @@ STDOUT_LOG="${DUMP_DIR}/steam_stdout.txt"
 if [ -f "$STDOUT_LOG" ]; then
     LOG_SIZE=$(stat -c%s "$STDOUT_LOG" 2>/dev/null || echo 0)
     echo "  steam_stdout.txt size: ${LOG_SIZE} bytes"
-    ERROR_LINES=$(grep -ciE 'error|crash|fail|assert' "$STDOUT_LOG" 2>/dev/null || echo 0)
+    if [ "$LOG_SIZE" -gt 10485760 ]; then
+        echo "  Log exceeds 10MB. Scanning last 1000 lines only."
+        ERROR_LINES=$(tail -1000 "$STDOUT_LOG" 2>/dev/null | grep -ciE 'error|crash|fail|assert' || echo 0)
+    else
+        ERROR_LINES=$(grep -ciE 'error|crash|fail|assert' "$STDOUT_LOG" 2>/dev/null || echo 0)
+    fi
     echo "  Error/crash/fail references: ${ERROR_LINES}"
     if [ "$ERROR_LINES" -gt 0 ]; then
-        grep -iE 'error|crash|fail|assert' "$STDOUT_LOG" 2>/dev/null | tail -10
+        if [ "$LOG_SIZE" -gt 10485760 ]; then
+            tail -1000 "$STDOUT_LOG" 2>/dev/null | grep -iE 'error|crash|fail|assert' | tail -10
+        else
+            grep -iE 'error|crash|fail|assert' "$STDOUT_LOG" 2>/dev/null | tail -10
+        fi
     fi
 else
     echo "  steam_stdout.txt not found."

@@ -19,7 +19,7 @@ panic_sync() {
 trap panic_sync EXIT HUP INT QUIT TERM
 
 echo "========================================" > "${REPORT_FILE}"
-echo "DeckDoc v1.0.0 - Bare-Metal Diagnostics" >> "${REPORT_FILE}"
+echo "DeckDoc v2.0.0 - Bare-Metal Diagnostics" >> "${REPORT_FILE}"
 echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "${REPORT_FILE}"
 echo "========================================" >> "${REPORT_FILE}"
 sync

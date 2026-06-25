@@ -55,7 +55,11 @@ fi
 sync
 
 echo "--- Battery charge limit interaction ---"
-if [ -f /sys/class/power_supply/BAT1/charge_control_limit ] || [ -f /sys/class/power_supply/BAT0/charge_control_limit ]; then
+BAT_DIR="/sys/class/power_supply/BAT1"
+if [ ! -d "$BAT_DIR" ]; then
+    BAT_DIR="/sys/class/power_supply/BAT0"
+fi
+if [ -f "${BAT_DIR}/charge_control_limit" ]; then
     echo "  Battery charge limit is set (may interact with PM resume bug #2475)."
 else
     echo "  No battery charge limit configured."
