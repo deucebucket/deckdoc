@@ -3,6 +3,8 @@ set -euo pipefail
 
 DECKDOC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_ENV="/tmp/deckdoc_mock_env"
+cleanup() { rm -rf "${TEST_ENV}"; }
+trap cleanup EXIT
 
 echo "========================================="
 echo "DeckDoc v2.0.0 — Test Runner"
@@ -99,12 +101,6 @@ else
     echo "  FAIL: panic_sync trap missing."
     exit 1
 fi
-
-# === Cleanup ===
-echo ""
-echo "--- Cleanup ---"
-rm -rf "${TEST_ENV}"
-echo "  PASS: Test environment cleaned."
 
 echo ""
 echo "========================================="
