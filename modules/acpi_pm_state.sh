@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+echo "[MODULE: ACPI Sleep/Wake (PM State)]"
+sync
+
+echo "--- Suspend/resume transitions (current boot) ---"
+if command -v journalctl >/dev/null 2>&1; then
+    SUSPEND_COUNT=$(journalctl -b 0 2>/dev/null | grep -c 'PM: suspend entry' || true)
+    RESUME_COUNT=$(journalctl -b 0 2>/dev/null | grep -c 'PM: resume' || true)
+    echo "  Suspend entries: ${SUSPEND_COUNT}"
+    echo "  Resume entries:  ${RESUME_COUNT}"
+
+    if journalctl -b 0 2>/dev/null | grep -q 'PM: suspend entry'; then
+        echo "  Last suspend/resume cycle:"
+        journalctl -b 0 2>/dev/null | grep -E 'PM: suspend entry|PM: resume' | tail -4
+    fi
+fi
+sync
+
+echo "--- Resume failure detection ---"
+if command -v journalctl >/dev/null 2>&1; then
+    RESUME_FAILURES=$(journalctl -b 0 2>/dev/null | grep -iE 'PM:.*resume.*fail|pci_pm_resume.*fail|-22.*PM|PM.*error.*-22' | head -10 || true)
+    if [ -n "$RESUME_FAILURES" ]; then
+        echo "  CRITICAL: Resume failures detected:"
+        echo "$RESUME_FAILURES"
+    else
+        echo "  No resume failures in current boot."
+    fi
+fi
+sync
+
+echo "--- Fan controller health after resume ---"
+if command -v journalctl >/dev/null 2>&1; then
+    FAN_WARNINGS=$(journalctl -b 0 2>/dev/null | grep -iE 'fancontrol.*Warning|jupiter.*Warning|Setting fan to max' | tail -10 || true)
+    if [ -n "$FAN_WARNINGS" ]; then
+        echo "  WARNING: Fan controller warnings detected (may indicate PM resume bug):"
+        echo "$FAN_WARNINGS"
+    else
+        echo "  No fan controller warnings in current boot."
+    fi
+
+    FAN_CRASH=$(journalctl -b 0 2>/dev/null | grep -iE 'fancontrol.*fail|jupiter-fan.*fail|fan.*RPM.*0|fan.*error' | tail -5 || true)
+    if [ -n "$FAN_CRASH" ]; then
+        echo "  CRITICAL: Fan controller failure detected:"
+        echo "$FAN_CRASH"
+    fi
+fi
+sync
+
+echo "--- ACPI wake sources ---"
+if command -v journalctl >/dev/null 2>&1; then
+    journalctl -b 0 2>/dev/null | grep -iE 'wake source|PM:.*wakeup|ACPI.*wake' | tail -5 || echo "  No wake source information available."
+fi
+sync
+
+echo "--- Battery charge limit interaction ---"
+if [ -f /sys/class/power_supply/BAT1/charge_control_limit ] || [ -f /sys/class/power_supply/BAT0/charge_control_limit ]; then
+    echo "  Battery charge limit is set (may interact with PM resume bug #2475)."
+else
+    echo "  No battery charge limit configured."
+fi
+sync
