@@ -7,7 +7,7 @@ cleanup() { rm -rf "${TEST_ENV}"; }
 trap cleanup EXIT
 
 echo "========================================="
-echo "DeckDoc v2.0.0 — Test Runner"
+echo "DeckDoc v3.0.0 — Test Runner"
 echo "========================================="
 
 # === Test 1: Mock sysfs structure ===
@@ -74,19 +74,19 @@ echo ""
 echo "--- Test 5: Module count ---"
 MODULE_COUNT=$(ls -1 "${DECKDOC_DIR}"/modules/*.sh | wc -l)
 echo "  Total modules: ${MODULE_COUNT}"
-if [ "$MODULE_COUNT" -eq 14 ]; then
-    echo "  PASS: Expected 14 modules present."
+if [ "$MODULE_COUNT" -eq 15 ]; then
+    echo "  PASS: Expected 15 modules present (14 diagnostic + 1 remediation)."
 else
-    echo "  WARNING: Expected 14 modules, found ${MODULE_COUNT}."
+    echo "  WARNING: Expected 15 modules, found ${MODULE_COUNT}."
 fi
 
 # === Test 6: deckdoc.sh launches all modules ===
 echo ""
 echo "--- Test 6: Parallel module launch check ---"
-LAUNCH_COUNT=$(grep -c '"${MODULES_DIR}/.*\.sh"' "${DECKDOC_DIR}/deckdoc.sh" 2>/dev/null || echo 0)
+LAUNCH_COUNT=$(grep -c '"${MODULES_DIR}/.*\.sh".*&[[:space:]]*$' "${DECKDOC_DIR}/deckdoc.sh" 2>/dev/null || echo 0)
 echo "  Module launches in deckdoc.sh: ${LAUNCH_COUNT}"
 if [ "$LAUNCH_COUNT" -eq 14 ]; then
-    echo "  PASS: All 14 modules launched in parallel."
+    echo "  PASS: All 14 diagnostic modules launched in parallel."
 else
     echo "  FAIL: Expected 14 module launches, found ${LAUNCH_COUNT}."
     exit 1
@@ -99,6 +99,34 @@ if grep -q 'panic_sync' "${DECKDOC_DIR}/deckdoc.sh"; then
     echo "  PASS: panic_sync trap registered."
 else
     echo "  FAIL: panic_sync trap missing."
+    exit 1
+fi
+
+# === Test 8: --fix flag and remediation module ===
+echo ""
+echo "--- Test 8: Remediation support ---"
+if grep -q 'FIX_MODE' "${DECKDOC_DIR}/deckdoc.sh"; then
+    echo "  PASS: --fix flag detection present."
+else
+    echo "  FAIL: --fix flag detection missing."
+    exit 1
+fi
+if grep -q 'rem_audio_sof.sh' "${DECKDOC_DIR}/deckdoc.sh"; then
+    echo "  PASS: rem_audio_sof.sh called from deckdoc.sh."
+else
+    echo "  FAIL: rem_audio_sof.sh not called from deckdoc.sh."
+    exit 1
+fi
+if grep -q 'PRE_CHECK' "${DECKDOC_DIR}/modules/rem_audio_sof.sh" 2>/dev/null; then
+    echo "  PASS: rem_audio_sof.sh implements PRE_CHECK lifecycle."
+else
+    echo "  FAIL: rem_audio_sof.sh lifecycle incomplete."
+    exit 1
+fi
+if grep -q 'REMEDIATION_OUTCOME' "${DECKDOC_DIR}/modules/rem_audio_sof.sh" 2>/dev/null; then
+    echo "  PASS: rem_audio_sof.sh reports REMEDIATION_OUTCOME."
+else
+    echo "  FAIL: rem_audio_sof.sh missing REMEDIATION_OUTCOME."
     exit 1
 fi
 
