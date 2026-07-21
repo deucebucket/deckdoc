@@ -1,7 +1,8 @@
 # Physical LCD blackout with live rendering
 
-Status: persistent mitigation deployed and verified across a reboot plus launcher-to-title transition;
-physical-panel confirmation and long-duration suspend/resume recurrence testing remain open.
+Status: persistent mitigation deployed and physically confirmed across a reboot, launcher-to-title
+transition, and nearly five hours of continuous rendering. Suspend/resume and dock/undock remain
+recommended regression exercises.
 
 ## Symptom
 
@@ -106,9 +107,15 @@ version:
 - Root KMS capture produced a native 1280x800 advancing title frame at approximately 53--60 FPS after
   the transition. The foreground process and MangoApp remained alive, and the boot had no coredump.
 
-This verifies script discovery, hook execution, native resolution, and scanout-plane containment. It
-does not verify emitted LCD pixels; a person looking at the physical panel must still confirm that
-the same frame is visible there.
+This verifies script discovery, hook execution, native resolution, and scanout-plane containment.
+
+### Physical and long-duration confirmation
+
+The user subsequently confirmed that the built-in LCD was visibly showing the running title. At the
+same time, the title log had advanced for 4 hours 54 minutes and reported 60.0--60.5 FPS. Gamescope
+reported the internal screen visible and unpaused with presents fully draining; exactly one Ryudeck
+process and one MangoApp process remained, and the current boot still had zero coredumps. This closes
+the software-versus-emitted-pixels gap for the repaired session.
 
 ### Post-mitigation diagnostic integrity
 
@@ -181,9 +188,8 @@ This rules Decky out for the captured incident without globally disabling it. A 
 still record the current plugin inventory and logs because a later plugin update or a per-game mod could
 change that result.
 
-## Remaining validation
+## Recommended regression exercises
 
-- Confirm physical LCD visibility in the rebooted, title-running one-plane session.
 - Exercise multiple sleep/resume cycles and dock/undock transitions with forced composition active.
 - Track recurrence duration. If blackouts continue in a verified single-plane session, preserve the
   DRM state and escalate the kernel/panel-link/TCON branch rather than changing power controls.
