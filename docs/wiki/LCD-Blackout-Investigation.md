@@ -164,6 +164,23 @@ running.
 - **Current global 1080p override:** current Steam and display state were 1280×800.
 - **Backlight-off event:** actual brightness was nonzero and `bl_power=0`.
 
+### Decky-specific audit
+
+Decky was not assumed absent: the system `plugin_loader.service` was active and its backend processes
+were inspected. The installed set was CSS Loader, SteamGridDB, Decky-Framegen, and Free Loader.
+Decky-Framegen was the only member with a plausible graphics association, but its backend contains no
+background Gamescope/display action: it only prepares or removes per-game Windows compatibility files
+after an explicit frontend request. Its current-boot log contained only `Framegen plugin loaded`.
+
+The running native foreground process had no `/home/deck/homebrew` mapping and no Decky/framegen Vulkan
+layer or preload environment. Its only `LD_PRELOAD` entries were Steam's normal 32-bit and 64-bit game
+overlay renderers. CSS Loader's activity was confined to Steam browser CSS injection. None of the Decky
+processes owned the DRM card or emitted a current-boot crash correlated with the blackout.
+
+This rules Decky out for the captured incident without globally disabling it. A future blackout should
+still record the current plugin inventory and logs because a later plugin update or a per-game mod could
+change that result.
+
 ## Remaining validation
 
 - Confirm physical LCD visibility in the rebooted, title-running one-plane session.
