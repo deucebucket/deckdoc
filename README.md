@@ -102,7 +102,7 @@ Run `sudo ./deckdoc.sh --fix` to attempt automatic recovery of detected failures
 
 The display remediation is intentionally separate from broad `--fix`. It requires `--fix-display-blackout` or `--persist-display-stability`, an explicitly reported symptom, a connected eDP panel, readable EDID, a nonzero backlight, and a live Gamescope session. It only sets Gamescope's `composite_force` policy, disabling direct/multi-plane scanout. The persistent Lua policy also uses Gamescope's documented `OnPostPaint` hook to restore the convar if a launcher-to-game transition clears it; live validation found that a one-time startup assignment was not sufficient.
 
-To roll back persistence, remove `~/.config/gamescope/99-deckdoc-display-stability.lua` and start a new Game Mode session. For the current session, run `gamescopectl composite_force 0`.
+To roll back persistence, remove `~/.config/gamescope/scripts/99-deckdoc-display-stability.lua` and start a new Game Mode session. For the current session, run `gamescopectl composite_force 0`.
 
 ### Display safety boundary
 

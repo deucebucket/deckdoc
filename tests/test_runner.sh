@@ -187,6 +187,7 @@ fi
 echo ""
 echo "--- Test 10: Display remediation safety contract ---"
 if grep -q 'gamescopectl composite_force 1' "${DECKDOC_DIR}/modules/rem_display_blackout.sh" && \
+   grep -q 'CONFIG_DIR="${SESSION_HOME}/.config/gamescope/scripts"' "${DECKDOC_DIR}/modules/rem_display_blackout.sh" && \
    grep -q 'gamescope.convars.composite_force.value = true' "${DECKDOC_DIR}/config/99-deckdoc-display-stability.lua" && \
    grep -q 'gamescope.hook("OnPostPaint"' "${DECKDOC_DIR}/config/99-deckdoc-display-stability.lua"; then
     echo "  PASS: Live and application-transition-stable forced-composition paths are present."

@@ -57,7 +57,7 @@ the foreground process, audio, and its control socket remained alive.
 The same policy is persisted for future Game Mode sessions in:
 
 ```text
-~/.config/gamescope/99-deckdoc-display-stability.lua
+~/.config/gamescope/scripts/99-deckdoc-display-stability.lua
 ```
 
 with an initial assignment plus a documented Gamescope frame hook:
@@ -86,6 +86,10 @@ The persistent policy therefore checks the convar from Gamescope's documented `O
 reasserts it only after another component clears it. The hook makes no panel, power, timing, or clock
 write. It must be loaded by a new Game Mode session before lifecycle persistence is considered
 verified.
+
+The first persistence attempt also exposed a path-specific failure: SteamOS 3.8.14 logged that its
+user script root is `~/.config/gamescope/scripts/`; a file directly under `~/.config/gamescope/` was
+silently skipped. DeckDoc now installs into the logged script root and tests that exact destination.
 
 ## Suspend/resume and thermal context
 

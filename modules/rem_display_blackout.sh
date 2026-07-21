@@ -91,8 +91,12 @@ echo "Applied session-only forced composition (direct scanout disabled)."
 
 if [ "$PERSIST" = "true" ]; then
     echo "--- PERSIST ---"
-    CONFIG_DIR="${SESSION_HOME}/.config/gamescope"
+    # SteamOS 3.8's script manager resolves the per-user tree below
+    # ~/.config/gamescope/scripts; placing the file at the parent is silently
+    # ignored and would make a successful live fix disappear after reboot.
+    CONFIG_DIR="${SESSION_HOME}/.config/gamescope/scripts"
     CONFIG_FILE="${CONFIG_DIR}/99-deckdoc-display-stability.lua"
+    LEGACY_CONFIG_FILE="${SESSION_HOME}/.config/gamescope/99-deckdoc-display-stability.lua"
     TEMPLATE="${DECKDOC_DIR}/config/99-deckdoc-display-stability.lua"
     if [ ! -r "$TEMPLATE" ]; then
         echo "FAILED: Persistence template missing: ${TEMPLATE}"
@@ -101,6 +105,14 @@ if [ "$PERSIST" = "true" ]; then
     fi
     mkdir -p "$CONFIG_DIR"
     if [ -e "$CONFIG_FILE" ]; then cp -a "$CONFIG_FILE" "${BACKUP_DIR}/99-deckdoc-display-stability.lua.$(date +%s).bak"; fi
+    if [ -e "$LEGACY_CONFIG_FILE" ]; then
+        # DeckDoc 3.1.0 briefly used Gamescope's parent config directory. Keep a
+        # recoverable copy, then remove only that exact DeckDoc-owned filename so
+        # the installed path cannot mislead later incident review.
+        cp -a "$LEGACY_CONFIG_FILE" "${BACKUP_DIR}/99-deckdoc-display-stability.lua.legacy.$(date +%s).bak"
+        rm -f "$LEGACY_CONFIG_FILE"
+        echo "Migrated prior DeckDoc policy from the ignored parent config directory."
+    fi
     install -m 0644 "$TEMPLATE" "$CONFIG_FILE"
     if [ "$(id -u)" -eq 0 ]; then chown -R "$SESSION_USER":"$(id -gn "$SESSION_USER")" "$CONFIG_DIR"; fi
     echo "Installed next-session user policy: ${CONFIG_FILE}"
