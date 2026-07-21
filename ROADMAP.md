@@ -28,7 +28,7 @@ v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shi
 |---|---|---|
 | **rem_audio_sof.sh** | Reload snd_sof_amd_vangogh, verify aplay recovery, PRE_CHECK/BACKUP/EXECUTE/VERIFY/REPORT lifecycle | Delivered |
 | deckdoc.sh --fix flag | Runs remediation modules after diagnostics, requires explicit flag | Delivered |
-| **rem_display_blackout.sh** | Force one composed Gamescope scanout plane after live-panel prechecks; optional user-level persistence | Delivered |
+| **rem_display_blackout.sh** | Force one composed Gamescope scanout plane after live-panel prechecks; persistent policy survives per-app convar resets | Delivered |
 | display-black signature | Correlate physical black with live eDP, EDID, backlight, CRTC, and multi-plane state | Delivered |
 | MangoApp fdinfo signature | Separate MangoApp overlay aborts from Gamescope compositor crashes | Delivered |
 

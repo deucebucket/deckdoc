@@ -60,14 +60,32 @@ The same policy is persisted for future Game Mode sessions in:
 ~/.config/gamescope/99-deckdoc-display-stability.lua
 ```
 
-with:
+with an initial assignment plus a documented Gamescope frame hook:
 
 ```lua
 gamescope.convars.composite_force.value = true
+gamescope.hook("OnPostPaint", function()
+    if not gamescope.convars.composite_force.value then
+        gamescope.convars.composite_force.value = true
+    end
+end)
 ```
 
 This changes plane selection only. It does not change brightness, panel power, refresh rate, display
 resolution, TDP, clocks, charging, firmware, or GPU power state.
+
+### Launcher-to-game lifecycle finding
+
+Live validation found one lifecycle gap in the first version of the policy. The Ryudeck library was
+single-plane after `gamescopectl composite_force 1`, but activating the title's Vulkan surface
+restored three full-screen scanout planes. Running the same convar command again immediately reduced
+DRM state to one plane while the title kept rendering at about 60 FPS. This rules out an ineffective
+convar and shows that a per-application transition can overwrite a one-time startup assignment.
+
+The persistent policy therefore checks the convar from Gamescope's documented `OnPostPaint` hook and
+reasserts it only after another component clears it. The hook makes no panel, power, timing, or clock
+write. It must be loaded by a new Game Mode session before lifecycle persistence is considered
+verified.
 
 ## Suspend/resume and thermal context
 
@@ -104,6 +122,7 @@ running.
 ## Remaining validation
 
 - Confirm physical LCD visibility immediately after mitigation and after the next Game Mode restart.
+- Verify that launcher-to-game activation remains at one plane after the hook loads.
 - Exercise multiple sleep/resume cycles and dock/undock transitions with forced composition active.
 - Track recurrence duration. If blackouts continue in a verified single-plane session, preserve the
   DRM state and escalate the kernel/panel-link/TCON branch rather than changing power controls.

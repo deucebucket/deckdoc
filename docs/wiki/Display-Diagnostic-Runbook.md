@@ -40,6 +40,10 @@ If the panel recovers and DRM collapses to one plane, persist it only after reco
 ./deckdoc.sh --persist-display-stability
 ```
 
+Start a new Game Mode session, launch a title, and check the DRM plane count again. Steam can clear a
+one-time convar assignment during the launcher-to-game transition; DeckDoc's persistent Lua policy
+uses Gamescope's documented `OnPostPaint` hook to restore forced composition when that occurs.
+
 ### `PANEL_OR_MODESET_STATE_INCOMPLETE`
 
 An eDP, EDID, backlight, or CRTC check failed. Forced composition is not automatically indicated.
