@@ -1,4 +1,4 @@
-# DeckDoc v3.0 — Roadmap: Diagnosis → Remediation
+# DeckDoc v3.1 — Roadmap: Diagnosis → Safe Remediation
 
 v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shifts focus from **detecting** failures to **automatically remediating** them — and building the feedback loop that tells you whether the fix worked.
 
@@ -28,6 +28,9 @@ v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shi
 |---|---|---|
 | **rem_audio_sof.sh** | Reload snd_sof_amd_vangogh, verify aplay recovery, PRE_CHECK/BACKUP/EXECUTE/VERIFY/REPORT lifecycle | Delivered |
 | deckdoc.sh --fix flag | Runs remediation modules after diagnostics, requires explicit flag | Delivered |
+| **rem_display_blackout.sh** | Force one composed Gamescope scanout plane after live-panel prechecks; persistent policy survives per-app convar resets | Delivered |
+| display-black signature | Correlate physical black with live eDP, EDID, backlight, CRTC, and multi-plane state | Delivered |
+| MangoApp fdinfo signature | Separate MangoApp overlay aborts from Gamescope compositor crashes | Delivered |
 
 ## v3.0 — Remediation Modules (Remaining)
 
@@ -37,7 +40,7 @@ v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shi
 |---|---|---|
 | **rem_wifi_firmware.sh** | wifi_firmware.sh: wlan0 DOWN or firmware crash | `sudo modprobe -r ath11k_pci && sudo modprobe ath11k_pci`, then verify `ip link show wlan0` shows UP. |
 | **rem_coredump_cleanup.sh** | coredump_analysis.sh: >100 dumps | `sudo rm /var/lib/systemd/coredump/*.zst` older than 30 days, report freed space. |
-| **rem_gpu_reset.sh** | gpu_apu.sh: GPU reset failed (hard lock) | Attempt `sudo sysfs` power cycle of GPU via `device_power_state`, fall back to advising full reboot. |
+| **rem_gpu_recovery_advice.sh** | gpu_apu.sh: GPU reset failed (hard lock) | Preserve logs, stop remediation, and advise an orderly reboot. DeckDoc will not power-cycle GPU or panel sysfs nodes. |
 
 ### P1 — Should Have
 
@@ -45,7 +48,7 @@ v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shi
 |---|---|---|
 | **rem_oom_protection.sh** | memory_swap.sh: MemAvailable < 1GB | Recommend closing games, list top memory consumers by %mem. Non-destructive advisory only. |
 | **rem_fan_recovery.sh** | acpi_pm_state.sh + thermal_fan.sh: fan 0 RPM after resume | `sudo systemctl restart jupiter-fan-control`, verify RPM returns in 10s. |
-| **rem_steam_cache.sh** | steam_client_logs.sh: shader cache errors | `rm -rf ~/.local/share/Steam/steamapps/shadercache/*` with user confirmation prompt. |
+| **rem_steam_cache.sh** | steam_client_logs.sh: shader cache errors | Identify the affected title cache and offer a recoverable, title-scoped move after confirmation. |
 | **rem_btrfs_scrub.sh** | fs_integrity.sh: BTRFS corruption > 0 | `sudo btrfs scrub start /` and report progress. |
 
 ### P2 — Nice to Have
@@ -53,7 +56,7 @@ v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shi
 | Module | Trigger | Remediation Action |
 |---|---|---|
 | **rem_battery_calibrate.sh** | battery_pmic.sh: `energy_full` / `energy_full_design` ratio < 60% or voltage desync | Guide user through full discharge/charge calibration cycle. |
-| **rem_sd_repair.sh** | mmc_sd_card.sh: EXT4 errors on mmc | `sudo umount /run/media/* && sudo fsck.ext4 -y /dev/mmcblk*p*` with confirmation. |
+| **rem_sd_repair.sh** | mmc_sd_card.sh: EXT4 errors on mmc | Resolve and display the exact unmounted partition, then require explicit confirmation before repair. |
 | **rem_gamescope_restart.sh** | gamescope_session.sh: >3 session restarts | Kill stale gamescope processes, restart session cleanly. |
 | **rem_dxvk_cache.sh** | dxvk_page_fault.sh: CB/DB page faults in specific game | Clear DXVK state cache for that title ID. |
 
@@ -78,6 +81,13 @@ Each remediation module follows a strict lifecycle:
 ```
 
 Remediation modules never run automatically — they require `--fix` flag or explicit invocation.
+
+## Permanent safety policy
+
+- Never change panel voltage, brightness, display power, TDP, clocks, charging behavior, or firmware as a blackout experiment.
+- Never attempt a blind GPU/panel sysfs power cycle. Preserve evidence and prefer an orderly reboot when the GPU is genuinely wedged.
+- Keep display fixes in the compositor plane-selection layer when evidence shows valid rendered/captured frames but failed physical scanout.
+- Require exact device resolution and recoverable backups before filesystem or cache mutation.
 
 ## Completed (v1.0.1)
 

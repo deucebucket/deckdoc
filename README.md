@@ -1,8 +1,21 @@
-# DeckDoc v3.0.0
+# DeckDoc v3.1.0
 
 **Bare-Metal Diagnostic + Remediation Scaffold for SteamOS / Steam Deck**
 
-Hardware telemetry, software crash analysis, and automated remediation designed for the Steam Deck's unique failure modes — the 200/400MHz APU lock, PMIC voltage desync, BTRFS silent corruption, SOF DSP panic, and unrecoverable amdgpu pipeline hangs. Executes 14 diagnostic modules in parallel with synchronous I/O (`sync` after every read) so that if the device suffers a kernel panic or power loss during extraction, the maximum diagnostic data has already been committed to persistent storage. Optionally runs remediation modules with the `--fix` flag.
+Hardware telemetry, software crash analysis, and guarded remediation designed for Steam Deck failure modes. Fifteen diagnostic modules run in parallel and flush their output frequently so useful evidence survives many interrupted runs. Remediation is explicit, prechecked, backed up, and verified.
+
+## Steam Deck screen black but sound still works
+
+If the built-in Steam Deck screen goes black while the backlight, sound, controls, and game keep
+working, DeckDoc can distinguish a live-render-to-physical-scanout gap from an application crash,
+GPU reset, or failed panel state. On one Jupiter LCD Deck, forcing Gamescope composition collapsed
+multiple full-screen hardware planes to one and restored the physical image without changing panel
+power, brightness, resolution, TDP, or GPU clocks.
+
+See [Steam Deck black screen with sound working](docs/wiki/Steam-Deck-Black-Screen-Sound-Working.md)
+for the evidence checklist, temporary command, persistent fix, rollback, and limits of this finding.
+The mitigation is deliberately guarded: a black screen with no backlight, a disconnected eDP panel,
+a GPU reset, or a blackout that already has only one scanout plane is a different failure.
 
 ## Architecture
 
@@ -19,17 +32,20 @@ deckdoc/
 │   └── fs_integrity.sh       # BTRFS device stats + EXT4 state (btrfs + dumpe2fs)
 │   # Software/OS diagnostics (v2.0 / v3.0)
 │   ├── audio_sof.sh          # SOF DSP panic detection (IPC error -22)
-│   ├── display_blackout.sh   # Screen blackout diagnosis (DPMS, sleep state, backlight)
+│   ├── display_blackout.sh   # eDP link/backlight/CRTC/plane-path blackout correlation
 │   ├── coredump_analysis.sh  # systemd-coredump crash counting & profiling
 │   ├── wifi_firmware.sh      # ath11k/iwlwifi post-resume failure
-│   ├── gamescope_session.sh  # Gamescope core dump & session restarts
+│   ├── gamescope_session.sh  # Gamescope/MangoApp crashes and current-boot restarts
 │   ├── memory_swap.sh        # Memory pressure, OOM events, swap analysis
 │   ├── steam_client_logs.sh  # Steam /tmp/dumps/ crash inventory
 │   ├── mmc_sd_card.sh        # SD card / mmc driver error detection
 │   ├── acpi_pm_state.sh      # ACPI suspend/resume, fan-after-wake failures
 │   └── dxvk_page_fault.sh    # DXVK/VKD3D GPU page fault classification
-│   # Remediation modules (v3.0)
-│   └── rem_audio_sof.sh      # SOF DSP driver reload — PRE_CHECK/BACKUP/EXECUTE/VERIFY/REPORT
+│   # Remediation modules
+│   ├── rem_audio_sof.sh      # SOF DSP driver reload — PRE_CHECK/BACKUP/EXECUTE/VERIFY/REPORT
+│   └── rem_display_blackout.sh # Gamescope forced composition; no power controls
+├── config/
+│   └── 99-deckdoc-display-stability.lua # Optional persistent Gamescope policy
 ├── tests/
 │   └── test_runner.sh        # Mock sysfs unit tests
 ├── ROADMAP.md                # Remediation roadmap
@@ -41,6 +57,15 @@ deckdoc/
 ```bash
 # Run diagnostics only
 ./deckdoc.sh
+
+# Correlate a physically black LCD while sound/rendering continues
+sudo ./deckdoc.sh --display-black
+
+# Apply a reversible, session-only single-plane Gamescope mitigation
+./deckdoc.sh --fix-display-blackout
+
+# Apply it now and persist it for later Game Mode sessions
+./deckdoc.sh --persist-display-stability
 
 # Run diagnostics + remediation (requires root)
 sudo ./deckdoc.sh --fix
@@ -62,23 +87,23 @@ All output lands in `logs/` — one file per module plus a consolidated master r
 | **Battery Deep Discharge** | battery_pmic.sh | Raw voltage < 6.6V (bypasses % spoofing) |
 | **PMIC Trickle-Charge** | battery_pmic.sh | `current_now` ≈ 10000 µA with low voltage |
 | **Cell Degradation** | battery_pmic.sh | `energy_full` / `energy_full_design` ratio |
-| **Thermal Trip > 90°C** | thermal_fan.sh | hwmon temp sensor threshold |
-| **Fan Failure** | thermal_fan.sh | 0 RPM while APU > 60°C |
+| **Thermal Threshold** | thermal_fan.sh | Exported hwmon high/critical thresholds; >90°C is only a high observation when no threshold is exposed |
+| **Fan Stopped** | thermal_fan.sh | Exported fan input at 0 RPM, reported alongside live temperatures |
 | **NVMe Health** | storage_smart.sh | `smartctl -H` pass/fail (sudo fallback) |
 | **BTRFS Corruption** | fs_integrity.sh | `btrfs device stats` non-zero counters |
 | **EXT4 State** | fs_integrity.sh | `dumpe2fs -h` filesystem state flags |
 | **SOF DSP Panic** | audio_sof.sh | IPC error -22, DSP panic, pipeline resume failure |
-| **Display Blackout** | display_blackout.sh | eDP disconnection, backlight=0, wrong ACPI sleep state |
-| **Core Dump Analysis** | coredump_analysis.sh | SIGTRAP/SIGABRT/SIGSEGV counts by binary |
+| **Display Blackout** | display_blackout.sh | eDP/EDID/backlight/CRTC correlation, active hardware planes, current and historical display warnings |
+| **Core Dump Analysis** | coredump_analysis.sh | Historical counts by executable plus current-boot SIGTRAP/SIGABRT/SIGSEGV severity |
 | **WiFi Firmware Crash** | wifi_firmware.sh | ath11k firmware errors, wlan0 DOWN state |
-| **Gamescope Restarts** | gamescope_session.sh | Session restart count, Vulkan descriptor failures |
+| **Gamescope / MangoApp Health** | gamescope_session.sh | Current-boot restarts, Vulkan errors, MangoApp fdinfo permission aborts |
 | **OOM / Memory Pressure** | memory_swap.sh | OOM events, swap thrashing, MemAvailable |
-| **Steam Crash Dumps** | steam_client_logs.sh | `/tmp/dumps/` inventory, stdout errors |
+| **Steam Crash Dumps** | steam_client_logs.sh | Actual minidump/core files only; ignores healthy `/tmp/dumps/` bookkeeping |
 | **SD Card Errors** | mmc_sd_card.sh | mmc driver errors, ext4 corruption on SD |
 | **ACPI Resume Failure** | acpi_pm_state.sh | Fan-after-wake bug, PCI PM resume errors |
 | **GPU Page Faults** | dxvk_page_fault.sh | UTCL2 client ID classification (CB/DB/CPF) |
 
-## Remediation (v3.0)
+## Remediation
 
 Run `sudo ./deckdoc.sh --fix` to attempt automatic recovery of detected failures. Each remediation module follows a strict lifecycle:
 
@@ -88,7 +113,13 @@ Run `sudo ./deckdoc.sh --fix` to attempt automatic recovery of detected failures
 4. **VERIFY** — Confirm the fix worked
 5. **REPORT** — Log outcome: SUCCESS, FAILED, or PARTIAL
 
-Remediation never runs without the `--fix` flag.
+The display remediation is intentionally separate from broad `--fix`. It requires `--fix-display-blackout` or `--persist-display-stability`, an explicitly reported symptom, a connected eDP panel, readable EDID, a nonzero backlight, and a live Gamescope session. It only sets Gamescope's `composite_force` policy, disabling direct/multi-plane scanout. The persistent Lua policy also uses Gamescope's documented `OnPostPaint` hook to restore the convar if a launcher-to-game transition clears it; live validation found that a one-time startup assignment was not sufficient.
+
+To roll back persistence, remove `~/.config/gamescope/scripts/99-deckdoc-display-stability.lua` and start a new Game Mode session. For the current session, run `gamescopectl composite_force 0`.
+
+### Display safety boundary
+
+DeckDoc's display remediation does **not** write panel/backlight power, brightness, refresh rate, TDP, GPU/CPU clocks, charging controls, firmware, or GPU reset sysfs nodes. A black panel with a failed EDID, zero backlight, or inactive modeset is recorded but not forced through this mitigation.
 
 ## Bare-Metal Design Philosophy
 
@@ -100,7 +131,7 @@ DeckDoc's approach:
 - **Trap handler** — `panic_sync` registered on EXIT/HUP/INT/QUIT/TERM
 - **No daemonization** — runs once, terminates, leaves no persistent process
 
-This guarantees that if the device dies mid-diagnostic, the data is already on disk.
+This improves the chance that evidence remains on disk if a run is interrupted; it cannot guarantee persistence across every storage, kernel, or power failure.
 
 ## Requirements
 
@@ -113,6 +144,9 @@ This guarantees that if the device dies mid-diagnostic, the data is already on d
 ## Next: Remediation
 
 See [ROADMAP.md](ROADMAP.md) for the v3.0 roadmap — shifting from diagnosis to automated remediation and self-healing.
+
+Engineering research and runbooks live under [docs/wiki](docs/wiki/Home.md); those files are also the
+source of truth for the GitHub wiki.
 
 ## License
 

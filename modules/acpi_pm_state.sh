@@ -5,15 +5,18 @@ echo "[MODULE: ACPI Sleep/Wake (PM State)]"
 sync
 
 echo "--- Suspend/resume transitions (current boot) ---"
+SUSPEND_COUNT=0
+RESUME_COUNT=0
 if command -v journalctl >/dev/null 2>&1; then
     SUSPEND_COUNT=$(journalctl -b 0 2>/dev/null | grep -c 'PM: suspend entry' || true)
-    RESUME_COUNT=$(journalctl -b 0 2>/dev/null | grep -c 'PM: resume' || true)
+    # Current SteamOS kernels report a completed resume as "PM: suspend exit".
+    RESUME_COUNT=$(journalctl -b 0 2>/dev/null | grep -Ec 'PM: suspend exit|PM: resume' || true)
     echo "  Suspend entries: ${SUSPEND_COUNT}"
     echo "  Resume entries:  ${RESUME_COUNT}"
 
     if journalctl -b 0 2>/dev/null | grep -q 'PM: suspend entry'; then
         echo "  Last suspend/resume cycle:"
-        journalctl -b 0 2>/dev/null | grep -E 'PM: suspend entry|PM: resume' | tail -4
+        journalctl -b 0 2>/dev/null | grep -E 'PM: suspend entry|PM: suspend exit|PM: resume' | tail -6
     fi
 fi
 sync
@@ -30,12 +33,17 @@ if command -v journalctl >/dev/null 2>&1; then
 fi
 sync
 
-echo "--- Fan controller health after resume ---"
+echo "--- Fan controller journal observations (current boot) ---"
 if command -v journalctl >/dev/null 2>&1; then
     FAN_WARNINGS=$(journalctl -b 0 2>/dev/null | grep -iE 'fancontrol.*Warning|jupiter.*Warning|Setting fan to max' | tail -10 || true)
     if [ -n "$FAN_WARNINGS" ]; then
-        echo "  WARNING: Fan controller warnings detected (may indicate PM resume bug):"
+        echo "  Fan controller warnings detected:"
         echo "$FAN_WARNINGS"
+        if [ "$SUSPEND_COUNT" -eq 0 ]; then
+            echo "  NOTE: No suspend occurred this boot; these entries are not resume-failure evidence."
+        else
+            echo "  NOTE: Correlate timestamps with the suspend window before attributing these entries to resume."
+        fi
     else
         echo "  No fan controller warnings in current boot."
     fi
