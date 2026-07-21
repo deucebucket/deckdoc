@@ -1,6 +1,7 @@
 # Physical LCD blackout with live rendering
 
-Status: mitigation deployed; long-duration and suspend/resume recurrence testing remains open.
+Status: persistent mitigation deployed and verified across a reboot plus launcher-to-title transition;
+physical-panel confirmation and long-duration suspend/resume recurrence testing remain open.
 
 ## Symptom
 
@@ -84,12 +85,30 @@ convar and shows that a per-application transition can overwrite a one-time star
 
 The persistent policy therefore checks the convar from Gamescope's documented `OnPostPaint` hook and
 reasserts it only after another component clears it. The hook makes no panel, power, timing, or clock
-write. It must be loaded by a new Game Mode session before lifecycle persistence is considered
-verified.
+write.
 
 The first persistence attempt also exposed a path-specific failure: SteamOS 3.8.14 logged that its
 user script root is `~/.config/gamescope/scripts/`; a file directly under `~/.config/gamescope/` was
 silently skipped. DeckDoc now installs into the logged script root and tests that exact destination.
+
+### Reboot and title-transition verification (2026-07-21)
+
+The corrected policy survived an orderly reboot and passed the lifecycle test that failed the first
+version:
+
+- Gamescope logged that it loaded
+  `/home/deck/.config/gamescope/scripts/99-deckdoc-display-stability.lua` as script id 12, with no Lua
+  error.
+- Gamescope later logged `DeckDoc restored composite_force after an application transition.`, proving
+  that the hook observed and repaired the transition-time convar reset.
+- The Steam library, Ryudeck library, and foreground Vulkan title each retained one active DRM plane:
+  `plane-3`, `crtc-0`, and `plane_mask=8` at the native 800x1280 panel timing.
+- Root KMS capture produced a native 1280x800 advancing title frame at approximately 53--60 FPS after
+  the transition. The foreground process and MangoApp remained alive, and the boot had no coredump.
+
+This verifies script discovery, hook execution, native resolution, and scanout-plane containment. It
+does not verify emitted LCD pixels; a person looking at the physical panel must still confirm that
+the same frame is visible there.
 
 ## Suspend/resume and thermal context
 
@@ -125,8 +144,7 @@ running.
 
 ## Remaining validation
 
-- Confirm physical LCD visibility immediately after mitigation and after the next Game Mode restart.
-- Verify that launcher-to-game activation remains at one plane after the hook loads.
+- Confirm physical LCD visibility in the rebooted, title-running one-plane session.
 - Exercise multiple sleep/resume cycles and dock/undock transitions with forced composition active.
 - Track recurrence duration. If blackouts continue in a verified single-plane session, preserve the
   DRM state and escalate the kernel/panel-link/TCON branch rather than changing power controls.

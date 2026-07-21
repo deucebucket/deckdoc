@@ -44,6 +44,17 @@ Start a new Game Mode session, launch a title, and check the DRM plane count aga
 one-time convar assignment during the launcher-to-game transition; DeckDoc's persistent Lua policy
 uses Gamescope's documented `OnPostPaint` hook to restore forced composition when that occurs.
 
+On SteamOS 3.8.14, verify the journal names the exact loaded file below; placing it directly in the
+parent `~/.config/gamescope/` directory is silently ineffective:
+
+```text
+~/.config/gamescope/scripts/99-deckdoc-display-stability.lua
+```
+
+A complete software-side verification has all three signals: the load line, a DeckDoc restore line
+if a transition clears the convar, and one active physical-plane bit in the DRM CRTC `plane_mask`
+after the foreground title is rendering.
+
 ### `PANEL_OR_MODESET_STATE_INCOMPLETE`
 
 An eDP, EDID, backlight, or CRTC check failed. Forced composition is not automatically indicated.
