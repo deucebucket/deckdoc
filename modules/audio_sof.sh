@@ -4,6 +4,20 @@ set -uo pipefail
 echo "[MODULE: Audio DSP (SOF)]"
 sync
 
+SESSION_USER="${DECKDOC_SESSION_USER:-${SUDO_USER:-$(id -un)}}"
+if [ "$SESSION_USER" = "root" ]; then
+    SESSION_USER=$(loginctl list-users --no-legend 2>/dev/null | awk '$2 != "root" { print $2; exit }')
+fi
+SESSION_UID=$(id -u "$SESSION_USER" 2>/dev/null || echo "")
+
+run_session() {
+    if [ "$(id -un)" = "$SESSION_USER" ]; then
+        XDG_RUNTIME_DIR="/run/user/${SESSION_UID}" "$@"
+    else
+        runuser -u "$SESSION_USER" -- env XDG_RUNTIME_DIR="/run/user/${SESSION_UID}" "$@"
+    fi
+}
+
 if command -v journalctl >/dev/null 2>&1; then
     echo "--- Current boot SOF DSP errors ---"
     SOF_ERRORS=$(journalctl -k -b 0 --priority=err 2>/dev/null | grep -iE 'snd_sof|DSP panic|ipc tx.*failed|ipc.*timed out' || true)
@@ -55,6 +69,9 @@ sync
 
 if command -v pw-cli >/dev/null 2>&1; then
     echo "--- PipeWire audio sinks ---"
-    pw-cli list-objects 2>/dev/null | grep -iE 'node.*Audio|alsa_output|alsa_input' | head -10 || echo "No PipeWire audio sinks detected."
+    # PipeWire is per-user. A sudo report must retain the Game Mode user's
+    # runtime directory or a healthy graph looks empty.
+    PIPEWIRE_NODES=$(run_session pw-cli list-objects 2>/dev/null | grep -iE 'node.*Audio|alsa_output|alsa_input' | head -10 || true)
+    if [ -n "$PIPEWIRE_NODES" ]; then echo "$PIPEWIRE_NODES"; else echo "No PipeWire audio sinks detected."; fi
 fi
 sync

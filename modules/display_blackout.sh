@@ -4,6 +4,19 @@ set -uo pipefail
 SYS_ROOT="${DECKDOC_SYS_ROOT:-/sys}"
 DEBUG_ROOT="${DECKDOC_DEBUGFS_ROOT:-${SYS_ROOT}/kernel/debug}"
 DISPLAY_BLACK_REPORTED="${DECKDOC_DISPLAY_BLACK_REPORTED:-false}"
+SESSION_USER="${DECKDOC_SESSION_USER:-${SUDO_USER:-$(id -un)}}"
+if [ "$SESSION_USER" = "root" ]; then
+    SESSION_USER=$(loginctl list-users --no-legend 2>/dev/null | awk '$2 != "root" { print $2; exit }')
+fi
+SESSION_UID=$(id -u "$SESSION_USER" 2>/dev/null || echo "")
+
+run_session() {
+    if [ "$(id -un)" = "$SESSION_USER" ]; then
+        XDG_RUNTIME_DIR="/run/user/${SESSION_UID}" "$@"
+    else
+        runuser -u "$SESSION_USER" -- env XDG_RUNTIME_DIR="/run/user/${SESSION_UID}" "$@"
+    fi
+}
 
 read_value() {
     local path="$1" fallback="${2:-unknown}"
@@ -100,7 +113,21 @@ echo "--- Gamescope composition state ---"
 if [ "${DECKDOC_SKIP_GAMESCOPE:-0}" = "1" ]; then
     echo "  Skipped by test environment."
 elif command -v gamescopectl >/dev/null 2>&1; then
-    gamescopectl backend_info 2>/dev/null | sed 's/^/  /' || echo "  gamescopectl could not query the active session."
+    # Sudo changes both the user and XDG_RUNTIME_DIR; route the read through the
+    # real Game Mode account so a healthy control socket is not reported dead.
+    # gamescopectl emits command payloads on stderr even on success.
+    BACKEND_INFO=$(run_session gamescopectl backend_info 2>&1 || true)
+    if [ -z "$BACKEND_INFO" ]; then
+        # gamescopectl returns success even when a transient socket read produces
+        # no payload, so retry once and classify the content rather than status.
+        sleep 0.2
+        BACKEND_INFO=$(run_session gamescopectl backend_info 2>&1 || true)
+    fi
+    if [ -n "$BACKEND_INFO" ]; then
+        printf '%s\n' "$BACKEND_INFO" | sed 's/^/  /'
+    else
+        echo "  gamescopectl returned no backend data for the active session."
+    fi
 else
     echo "  gamescopectl not installed."
 fi

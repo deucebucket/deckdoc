@@ -17,21 +17,26 @@ sync
 
 echo "--- Gamescope and MangoApp core dumps ---"
 if command -v coredumpctl >/dev/null 2>&1; then
-    GAMESCOPE_DUMPS=$(coredumpctl list 2>/dev/null | grep -iE '/(gamescope|mangoapp)([[:space:]]|$)' | tail -20 || true)
-    if [ -n "$GAMESCOPE_DUMPS" ]; then
-        echo "$GAMESCOPE_DUMPS"
-        GAMESCOPE_COUNT=$(echo "$GAMESCOPE_DUMPS" | grep -ic '/gamescope' || true)
-        MANGOAPP_COUNT=$(echo "$GAMESCOPE_DUMPS" | grep -ic '/mangoapp' || true)
-        echo "  Recent Gamescope crashes: ${GAMESCOPE_COUNT}"
-        echo "  Recent MangoApp crashes:  ${MANGOAPP_COUNT}"
-        if [ "${GAMESCOPE_COUNT:-0}" -gt 0 ]; then
-            echo "  CRITICAL: Gamescope itself has crashed."
-        fi
-        if [ "${MANGOAPP_COUNT:-0}" -gt 3 ]; then
-            echo "  NOTE: Historical MangoApp abort records are retained; current service health is checked below."
-        fi
-    else
-        echo "  No gamescope crashes recorded."
+    BOOT_START=$(uptime -s 2>/dev/null || true)
+    HISTORICAL_DUMPS=$(coredumpctl list --no-legend --no-pager 2>/dev/null | grep -iE '/(gamescope|mangoapp)([[:space:]]|$)' || true)
+    CURRENT_DUMPS=""
+    if [ -n "$BOOT_START" ]; then
+        CURRENT_DUMPS=$(coredumpctl list --no-legend --no-pager --since "$BOOT_START" 2>/dev/null | grep -iE '/(gamescope|mangoapp)([[:space:]]|$)' || true)
+    fi
+    HISTORICAL_GAMESCOPE_COUNT=$(printf '%s\n' "$HISTORICAL_DUMPS" | grep -ic '/gamescope' || true)
+    HISTORICAL_MANGOAPP_COUNT=$(printf '%s\n' "$HISTORICAL_DUMPS" | grep -ic '/mangoapp' || true)
+    CURRENT_GAMESCOPE_COUNT=$(printf '%s\n' "$CURRENT_DUMPS" | grep -ic '/gamescope' || true)
+    CURRENT_MANGOAPP_COUNT=$(printf '%s\n' "$CURRENT_DUMPS" | grep -ic '/mangoapp' || true)
+    echo "  Historical Gamescope crashes:   ${HISTORICAL_GAMESCOPE_COUNT}"
+    echo "  Historical MangoApp crashes:    ${HISTORICAL_MANGOAPP_COUNT}"
+    echo "  Current-boot Gamescope crashes: ${CURRENT_GAMESCOPE_COUNT}"
+    echo "  Current-boot MangoApp crashes:  ${CURRENT_MANGOAPP_COUNT}"
+    if [ -n "$CURRENT_DUMPS" ]; then printf '%s\n' "$CURRENT_DUMPS" | tail -10; fi
+    if [ "${CURRENT_GAMESCOPE_COUNT:-0}" -gt 0 ]; then
+        echo "  CRITICAL: Gamescope itself crashed in the current boot."
+    fi
+    if [ "${HISTORICAL_MANGOAPP_COUNT:-0}" -gt 3 ] && [ "${CURRENT_MANGOAPP_COUNT:-0}" -eq 0 ]; then
+        echo "  NOTE: Historical MangoApp abort records are retained; none occurred in the current boot."
     fi
 else
     echo "  coredumpctl not available."

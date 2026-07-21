@@ -21,20 +21,73 @@ if ! command -v coredumpctl >/dev/null 2>&1; then
     exit 0
 fi
 
-echo "--- Crash count by binary ---"
-coredumpctl list 2>/dev/null | awk 'NR>1 {for(i=4;i<=NF;i++) printf "%s ", $i; print ""}' 2>/dev/null | \
-    sed 's/ ([^)]*)//g' | awk '{count[$0]++} END {for (bin in count) printf "  %-40s %d crashes\n", bin, count[bin]}' 2>/dev/null | \
-    sort -rn -k2 || echo "No core dumps recorded."
+BOOT_START=$(uptime -s 2>/dev/null || true)
+ALL_DUMPS=$(coredumpctl list --no-legend --no-pager 2>/dev/null || true)
+if [ -n "$BOOT_START" ]; then
+    BOOT_DUMPS=$(coredumpctl list --no-legend --no-pager --since "$BOOT_START" 2>/dev/null || true)
+else
+    BOOT_DUMPS=""
+fi
+
+count_signal() {
+    local records="$1" signal="$2"
+    printf '%s\n' "$records" | awk -v wanted="$signal" '
+        { for (i=1; i<=NF; i++) if ($i == wanted) count++ }
+        END { print count+0 }
+    '
+}
+
+count_executable() {
+    local records="$1" pattern="$2"
+    printf '%s\n' "$records" | awk -v wanted="$pattern" '
+        {
+            for (i=1; i<=NF; i++) {
+                if ($i ~ /^SIG[A-Z0-9]+$/ && $(i+2) ~ wanted) count++
+            }
+        }
+        END { print count+0 }
+    '
+}
+
+count_records() {
+    local records="$1"
+    printf '%s\n' "$records" | awk '
+        { for (i=1; i<=NF; i++) if ($i ~ /^SIG[A-Z0-9]+$/) { count++; break } }
+        END { print count+0 }
+    '
+}
+
+echo "--- Historical crash count by executable (retained records) ---"
+# coredumpctl's executable is two fields after the signal regardless of the
+# localized date/time prefix. Aggregate that field only; the previous parser
+# accidentally treated every whole row as a unique executable.
+COUNTS=$(printf '%s\n' "$ALL_DUMPS" | awk '
+    {
+        for (i=1; i<=NF; i++) {
+            if ($i ~ /^SIG[A-Z0-9]+$/ && $(i+2) != "") { count[$(i+2)]++; break }
+        }
+    }
+    END { for (exe in count) printf "  %-52s %d crashes\n", exe, count[exe] }
+' | sort -k2,2nr)
+if [ -n "$COUNTS" ]; then echo "$COUNTS"; else echo "  No retained core dumps."; fi
 sync
 
-echo "--- Recent crashes (last 10) ---"
-coredumpctl list 2>/dev/null | tail -10 || echo "No core dumps recorded."
+echo "--- Current-boot crashes ---"
+BOOT_DUMP_COUNT=$(count_records "$BOOT_DUMPS")
+echo "  Current-boot core dumps: ${BOOT_DUMP_COUNT}"
+if [ "$BOOT_DUMP_COUNT" -gt 0 ]; then
+    printf '%s\n' "$BOOT_DUMPS" | tail -10
+else
+    echo "  No core dumps in the current boot."
+fi
 sync
 
 echo "--- Steam Deck overlay crash signature ---"
-MANGOAPP_DUMPS=$(coredumpctl list 2>/dev/null | grep -c '/mangoapp' || true)
-echo "  MangoApp dumps: ${MANGOAPP_DUMPS}"
-if command -v journalctl >/dev/null 2>&1; then
+MANGOAPP_DUMPS=$(count_executable "$ALL_DUMPS" '/mangoapp$')
+MANGOAPP_BOOT_DUMPS=$(count_executable "$BOOT_DUMPS" '/mangoapp$')
+echo "  Historical MangoApp dumps:   ${MANGOAPP_DUMPS}"
+echo "  Current-boot MangoApp dumps: ${MANGOAPP_BOOT_DUMPS}"
+if [ "${DECKDOC_SKIP_JOURNAL:-0}" != "1" ] && command -v journalctl >/dev/null 2>&1; then
     FDINFO_ABORT=$(run_user journalctl --user -b 0 -u gamescope-mangoapp.service 2>/dev/null | grep -E "Permission denied: '/proc/[0-9]+/fdinfo'" | tail -5 || true)
     if [ -n "$FDINFO_ABORT" ]; then
         echo "$FDINFO_ABORT"
@@ -45,21 +98,21 @@ fi
 sync
 
 echo "--- Signal analysis ---"
-SIGTRAP_COUNT=$(coredumpctl list 2>/dev/null | grep -c 'SIGTRAP' || true)
-SIGABRT_COUNT=$(coredumpctl list 2>/dev/null | grep -c 'SIGABRT' || true)
-SIGSEGV_COUNT=$(coredumpctl list 2>/dev/null | grep -c 'SIGSEGV' || true)
-echo "  SIGTRAP (steamwebhelper expected): ${SIGTRAP_COUNT}"
-echo "  SIGABRT (application abort):       ${SIGABRT_COUNT}"
-echo "  SIGSEGV (segmentation fault):      ${SIGSEGV_COUNT}"
+SIGTRAP_COUNT=$(count_signal "$BOOT_DUMPS" SIGTRAP)
+SIGABRT_COUNT=$(count_signal "$BOOT_DUMPS" SIGABRT)
+SIGSEGV_COUNT=$(count_signal "$BOOT_DUMPS" SIGSEGV)
+echo "  Current-boot SIGTRAP (steamwebhelper often expected): ${SIGTRAP_COUNT}"
+echo "  Current-boot SIGABRT (application abort):             ${SIGABRT_COUNT}"
+echo "  Current-boot SIGSEGV (segmentation fault):            ${SIGSEGV_COUNT}"
 if [ "$SIGABRT_COUNT" -gt 5 ] || [ "$SIGSEGV_COUNT" -gt 5 ]; then
-    echo "CRITICAL: Elevated crash rate detected. Investigate SIGABRT/SIGSEGV sources."
+    echo "CRITICAL: Elevated current-boot crash rate detected. Investigate SIGABRT/SIGSEGV sources."
 fi
 sync
 
 echo "--- Disk usage ---"
 if [ -d /var/lib/systemd/coredump ]; then
     DUMP_SIZE=$(du -sh /var/lib/systemd/coredump/ 2>/dev/null | cut -f1)
-    TOTAL_DUMPS=$(coredumpctl list 2>/dev/null | wc -l)
+    TOTAL_DUMPS=$(count_records "$ALL_DUMPS")
     echo "  Total dumps stored: ${TOTAL_DUMPS}"
     echo "  Total disk usage:   ${DUMP_SIZE}"
     if [ -n "$TOTAL_DUMPS" ] && [ "$TOTAL_DUMPS" -gt 100 ]; then
@@ -71,5 +124,6 @@ fi
 sync
 
 echo "--- Desktop environment stability ---"
-coredumpctl list 2>/dev/null | grep -iE 'kwin_wayland|plasmashell|plasma_session' | tail -5 || echo "No desktop environment crashes recorded."
+DESKTOP_DUMPS=$(printf '%s\n' "$ALL_DUMPS" | grep -iE 'kwin_wayland|plasmashell|plasma_session' | tail -5 || true)
+if [ -n "$DESKTOP_DUMPS" ]; then echo "$DESKTOP_DUMPS"; else echo "No desktop environment crashes recorded."; fi
 sync

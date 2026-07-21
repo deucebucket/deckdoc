@@ -74,18 +74,18 @@ All output lands in `logs/` — one file per module plus a consolidated master r
 | **Battery Deep Discharge** | battery_pmic.sh | Raw voltage < 6.6V (bypasses % spoofing) |
 | **PMIC Trickle-Charge** | battery_pmic.sh | `current_now` ≈ 10000 µA with low voltage |
 | **Cell Degradation** | battery_pmic.sh | `energy_full` / `energy_full_design` ratio |
-| **Thermal Trip > 90°C** | thermal_fan.sh | hwmon temp sensor threshold |
-| **Fan Failure** | thermal_fan.sh | 0 RPM while APU > 60°C |
+| **Thermal Threshold** | thermal_fan.sh | Exported hwmon high/critical thresholds; >90°C is only a high observation when no threshold is exposed |
+| **Fan Stopped** | thermal_fan.sh | Exported fan input at 0 RPM, reported alongside live temperatures |
 | **NVMe Health** | storage_smart.sh | `smartctl -H` pass/fail (sudo fallback) |
 | **BTRFS Corruption** | fs_integrity.sh | `btrfs device stats` non-zero counters |
 | **EXT4 State** | fs_integrity.sh | `dumpe2fs -h` filesystem state flags |
 | **SOF DSP Panic** | audio_sof.sh | IPC error -22, DSP panic, pipeline resume failure |
 | **Display Blackout** | display_blackout.sh | eDP/EDID/backlight/CRTC correlation, active hardware planes, current and historical display warnings |
-| **Core Dump Analysis** | coredump_analysis.sh | SIGTRAP/SIGABRT/SIGSEGV counts by binary |
+| **Core Dump Analysis** | coredump_analysis.sh | Historical counts by executable plus current-boot SIGTRAP/SIGABRT/SIGSEGV severity |
 | **WiFi Firmware Crash** | wifi_firmware.sh | ath11k firmware errors, wlan0 DOWN state |
 | **Gamescope / MangoApp Health** | gamescope_session.sh | Current-boot restarts, Vulkan errors, MangoApp fdinfo permission aborts |
 | **OOM / Memory Pressure** | memory_swap.sh | OOM events, swap thrashing, MemAvailable |
-| **Steam Crash Dumps** | steam_client_logs.sh | `/tmp/dumps/` inventory, stdout errors |
+| **Steam Crash Dumps** | steam_client_logs.sh | Actual minidump/core files only; ignores healthy `/tmp/dumps/` bookkeeping |
 | **SD Card Errors** | mmc_sd_card.sh | mmc driver errors, ext4 corruption on SD |
 | **ACPI Resume Failure** | acpi_pm_state.sh | Fan-after-wake bug, PCI PM resume errors |
 | **GPU Page Faults** | dxvk_page_fault.sh | UTCL2 client ID classification (CB/DB/CPF) |

@@ -202,6 +202,94 @@ else
     echo "  PASS: Display remediation contains no panel-power, brightness, or clock writes."
 fi
 
+# === Test 11: Current-boot crash classification ===
+echo ""
+echo "--- Test 11: Current-boot crash classification ---"
+mkdir -p "${TEST_ENV}/bin"
+printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'if [[ " $* " == *" --since "* ]]; then' \
+    '  echo "Tue 2026-07-21 09:10:00 CDT 2000 1000 1000 SIGABRT none /home/deck/.dotnet/dotnet -"' \
+    'else' \
+    '  for pid in 1001 1002 1003 1004 1005 1006 1007; do' \
+    '    echo "Mon 2026-07-20 21:00:00 CDT $pid 1000 1000 SIGABRT present /usr/bin/mangoapp 3M"' \
+    '  done' \
+    '  echo "Tue 2026-07-21 09:10:00 CDT 2000 1000 1000 SIGABRT none /home/deck/.dotnet/dotnet -"' \
+    'fi' > "${TEST_ENV}/bin/coredumpctl"
+chmod +x "${TEST_ENV}/bin/coredumpctl"
+CORE_REPORT="${TEST_ENV}/core-report.txt"
+PATH="${TEST_ENV}/bin:${PATH}" DECKDOC_SKIP_JOURNAL=1 \
+    "${DECKDOC_DIR}/modules/coredump_analysis.sh" > "$CORE_REPORT"
+if grep -q 'Historical MangoApp dumps:   7' "$CORE_REPORT" && \
+   grep -q 'Current-boot MangoApp dumps: 0' "$CORE_REPORT" && \
+   grep -q 'Current-boot SIGABRT.*:.*1' "$CORE_REPORT" && \
+   grep -Eq '/usr/bin/mangoapp[[:space:]]+7 crashes' "$CORE_REPORT" && \
+   ! grep -q 'CRITICAL: Elevated current-boot crash rate' "$CORE_REPORT"; then
+    echo "  PASS: Retained crashes are aggregated but do not trigger a current-boot critical."
+else
+    echo "  FAIL: Historical and current-boot crashes were conflated."
+    cat "$CORE_REPORT"
+    exit 1
+fi
+
+# === Test 12: Steam crash-file and session-home filtering ===
+echo ""
+echo "--- Test 12: Steam dump filtering and session context ---"
+mkdir -p "${TEST_ENV}/dumps/completed" "${TEST_ENV}/dumps/new" \
+    "${TEST_ENV}/session-home/.local/share/Steam/steamapps/compatdata/123"
+printf 'healthy bookkeeping\n' > "${TEST_ENV}/dumps/settings.dat"
+: > "${TEST_ENV}/dumps/completed/one.dmp"
+: > "${TEST_ENV}/dumps/new/two.mdmp"
+STEAM_REPORT="${TEST_ENV}/steam-report.txt"
+DECKDOC_DUMP_DIR="${TEST_ENV}/dumps" \
+DECKDOC_SESSION_HOME="${TEST_ENV}/session-home" \
+DECKDOC_SKIP_JOURNAL=1 \
+    "${DECKDOC_DIR}/modules/steam_client_logs.sh" > "$STEAM_REPORT"
+if grep -q 'Actual crash dump files: 2' "$STEAM_REPORT" && \
+   grep -q 'Proton prefixes: 1 total' "$STEAM_REPORT" && \
+   ! grep -q '/root/.local/share/Steam' "$STEAM_REPORT"; then
+    echo "  PASS: Steam bookkeeping is ignored and sudo reports use the session user's tree."
+else
+    echo "  FAIL: Steam dump/session filtering is inaccurate."
+    cat "$STEAM_REPORT"
+    exit 1
+fi
+
+# === Test 13: Sensor-native thermal thresholds ===
+echo ""
+echo "--- Test 13: Sensor-native thermal thresholds ---"
+mkdir -p "${TEST_ENV}/hwmon/hwmon0" "${TEST_ENV}/hwmon/hwmon1"
+printf 'acpitz\n' > "${TEST_ENV}/hwmon/hwmon0/name"
+printf '91000\n' > "${TEST_ENV}/hwmon/hwmon0/temp1_input"
+printf 'nvme\n' > "${TEST_ENV}/hwmon/hwmon1/name"
+printf '85000\n' > "${TEST_ENV}/hwmon/hwmon1/temp1_input"
+printf '82850\n' > "${TEST_ENV}/hwmon/hwmon1/temp1_max"
+printf '84850\n' > "${TEST_ENV}/hwmon/hwmon1/temp1_crit"
+THERMAL_REPORT="${TEST_ENV}/thermal-report.txt"
+DECKDOC_HWMON_DIR="${TEST_ENV}/hwmon" "${DECKDOC_DIR}/modules/thermal_fan.sh" > "$THERMAL_REPORT"
+if grep -q 'above 90 C; this sensor exposes no hardware critical threshold' "$THERMAL_REPORT" && \
+   grep -q 'at or above its exported critical threshold' "$THERMAL_REPORT" && \
+   ! grep -q 'Thermal Trip Point Exceeded (>90C)' "$THERMAL_REPORT"; then
+    echo "  PASS: Thermal severity follows exported hardware thresholds without inventing a 90 C trip."
+else
+    echo "  FAIL: Thermal threshold classification is inaccurate."
+    cat "$THERMAL_REPORT"
+    exit 1
+fi
+
+# === Test 14: Sudo-to-session diagnostic routing ===
+echo ""
+echo "--- Test 14: Sudo-to-session diagnostic routing ---"
+if grep -q 'run_session gamescopectl backend_info' "${DECKDOC_DIR}/modules/display_blackout.sh" && \
+   grep -q 'run_session pw-cli list-objects' "${DECKDOC_DIR}/modules/audio_sof.sh" && \
+   grep -q 'STEAM_DIR="${SESSION_HOME}/.local/share/Steam' "${DECKDOC_DIR}/modules/steam_client_logs.sh" && \
+   grep -q 'journalctl -b 0 --priority=err -o cat' "${DECKDOC_DIR}/modules/steam_client_logs.sh"; then
+    echo "  PASS: Per-user Gamescope, PipeWire, and Steam diagnostics retain the Game Mode session context."
+else
+    echo "  FAIL: A sudo diagnostic still falls through to root's session context."
+    exit 1
+fi
+
 echo ""
 echo "========================================="
 echo "All scaffold tests completed successfully."

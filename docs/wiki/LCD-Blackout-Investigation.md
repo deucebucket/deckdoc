@@ -110,6 +110,28 @@ This verifies script discovery, hook execution, native resolution, and scanout-p
 does not verify emitted LCD pixels; a person looking at the physical panel must still confirm that
 the same frame is visible there.
 
+### Post-mitigation diagnostic integrity
+
+The first healthy-state DeckDoc report revealed several reporting errors that could obscure this
+result. They were corrected and covered by fixtures before the final snapshot:
+
+- 18 retained pre-fix MangoApp coredumps are now explicitly historical; the current boot reports zero
+  MangoApp dumps, zero SIGABRT, zero SIGSEGV, and an active MangoApp service.
+- Steam's normal `/tmp/dumps/settings.dat` and bookkeeping directories are no longer counted as crash
+  dumps. The current boot has zero actual minidump/core files.
+- Root reports route Gamescope, PipeWire, and Steam-path reads through the active Game Mode user rather
+  than `/root`; the final report sees a responsive internal Gamescope backend, real audio sinks, and
+  the actual Steam compatibility tree.
+- Thermal severity follows each sensor's exported hwmon threshold. A sensor without a published
+  critical point can be recorded as above 90 C, but DeckDoc no longer calls 90 C a hardware trip.
+- Journal matching strips the `steamdeck` hostname before looking for Steam process failures, avoiding
+  false matches against unrelated messages containing a later word such as `tx_abort`.
+
+The corrected running-title sample held at about 83 C CPU, 75--76 C GPU, and 6,200 RPM for 30 seconds
+after brief 90--94 C load spikes. There was no thermal trip, GPU reset, process exit, or plane-policy
+loss. This temperature history is worth tracking, but it did not correlate with the original blackout,
+which occurred at lower measured temperatures.
+
 ## Suspend/resume and thermal context
 
 The affected boot contained three deep suspend cycles and all three completed (`PM: suspend exit`).
