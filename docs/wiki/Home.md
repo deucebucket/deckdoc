@@ -16,4 +16,3 @@ A captured or streamed frame and the physical LCD are different observation poin
 continues to show valid frames while the built-in panel is black, the application and most of the
 compositor path are still working. DeckDoc then inspects the eDP link, EDID, backlight, CRTC, and
 hardware-plane commit state instead of blaming the foreground application.
-

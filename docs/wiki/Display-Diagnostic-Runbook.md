@@ -74,4 +74,3 @@ rm ~/.config/gamescope/99-deckdoc-display-stability.lua
 
 The removal is intentionally manual and exact. Never recursively delete the Gamescope config
 directory.
-

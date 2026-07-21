@@ -117,4 +117,3 @@ running.
 - SteamOS backlight-on black-screen report: https://github.com/ValveSoftware/SteamOS/issues/1324
 - SteamOS no-reset intermittent LCD-black report: https://github.com/ValveSoftware/SteamOS/issues/2632
 - SteamOS GPU-reset black-screen comparison case: https://github.com/ValveSoftware/SteamOS/issues/1015
-

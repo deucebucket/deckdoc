@@ -28,4 +28,3 @@ must not contain an automatic GPU sysfs power-cycle module.
 The display mitigation follows this policy by changing only Gamescope's plane-selection convar.
 Physical visibility always remains a human confirmation, so software-only verification reports
 `PARTIAL` until that confirmation is recorded.
-
