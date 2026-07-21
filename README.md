@@ -4,6 +4,19 @@
 
 Hardware telemetry, software crash analysis, and guarded remediation designed for Steam Deck failure modes. Fifteen diagnostic modules run in parallel and flush their output frequently so useful evidence survives many interrupted runs. Remediation is explicit, prechecked, backed up, and verified.
 
+## Steam Deck screen black but sound still works
+
+If the built-in Steam Deck screen goes black while the backlight, sound, controls, and game keep
+working, DeckDoc can distinguish a live-render-to-physical-scanout gap from an application crash,
+GPU reset, or failed panel state. On one Jupiter LCD Deck, forcing Gamescope composition collapsed
+multiple full-screen hardware planes to one and restored the physical image without changing panel
+power, brightness, resolution, TDP, or GPU clocks.
+
+See [Steam Deck black screen with sound working](docs/wiki/Steam-Deck-Black-Screen-Sound-Working.md)
+for the evidence checklist, temporary command, persistent fix, rollback, and limits of this finding.
+The mitigation is deliberately guarded: a black screen with no backlight, a disconnected eDP panel,
+a GPU reset, or a blackout that already has only one scanout plane is a different failure.
+
 ## Architecture
 
 ```

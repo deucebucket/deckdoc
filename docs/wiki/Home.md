@@ -6,6 +6,7 @@ trigger, read-only prechecks, a backup, a narrow action, verification, and a rol
 
 ## Current investigations
 
+- [Steam Deck black screen with sound working: diagnosis and fix](Steam-Deck-Black-Screen-Sound-Working.md)
 - [Physical LCD blackout with live rendering](LCD-Blackout-Investigation.md)
 - [Display diagnostic runbook](Display-Diagnostic-Runbook.md)
 - [Safe remediation policy](Safe-Remediation-Policy.md)
