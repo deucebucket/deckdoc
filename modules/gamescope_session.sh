@@ -1,18 +1,34 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+SESSION_USER="${DECKDOC_SESSION_USER:-${SUDO_USER:-$(id -un)}}"
+SESSION_UID=$(id -u "$SESSION_USER" 2>/dev/null || echo "")
+
+run_user() {
+    if [ "$(id -un)" = "$SESSION_USER" ]; then
+        XDG_RUNTIME_DIR="/run/user/${SESSION_UID}" "$@"
+    else
+        runuser -u "$SESSION_USER" -- env XDG_RUNTIME_DIR="/run/user/${SESSION_UID}" "$@"
+    fi
+}
+
 echo "[MODULE: Gamescope Session Health]"
 sync
 
-echo "--- Gamescope core dumps ---"
+echo "--- Gamescope and MangoApp core dumps ---"
 if command -v coredumpctl >/dev/null 2>&1; then
-    GAMESCOPE_DUMPS=$(coredumpctl list 2>/dev/null | grep -iE 'gamescope' | tail -10 || true)
+    GAMESCOPE_DUMPS=$(coredumpctl list 2>/dev/null | grep -iE '/(gamescope|mangoapp)([[:space:]]|$)' | tail -20 || true)
     if [ -n "$GAMESCOPE_DUMPS" ]; then
         echo "$GAMESCOPE_DUMPS"
-        GAMESCOPE_COUNT=$(coredumpctl list 2>/dev/null | grep -ic 'gamescope' || true)
-        echo "  Total gamescope crashes: ${GAMESCOPE_COUNT}"
-        if [ "${GAMESCOPE_COUNT:-0}" -gt 3 ]; then
-            echo "  CRITICAL: Gamescope crash rate elevated (>3). Multiple session restarts likely."
+        GAMESCOPE_COUNT=$(echo "$GAMESCOPE_DUMPS" | grep -ic '/gamescope' || true)
+        MANGOAPP_COUNT=$(echo "$GAMESCOPE_DUMPS" | grep -ic '/mangoapp' || true)
+        echo "  Recent Gamescope crashes: ${GAMESCOPE_COUNT}"
+        echo "  Recent MangoApp crashes:  ${MANGOAPP_COUNT}"
+        if [ "${GAMESCOPE_COUNT:-0}" -gt 0 ]; then
+            echo "  CRITICAL: Gamescope itself has crashed."
+        fi
+        if [ "${MANGOAPP_COUNT:-0}" -gt 3 ]; then
+            echo "  NOTE: Historical MangoApp abort records are retained; current service health is checked below."
         fi
     else
         echo "  No gamescope crashes recorded."
@@ -24,9 +40,9 @@ sync
 
 echo "--- Gamescope session errors (current boot) ---"
 if command -v journalctl >/dev/null 2>&1; then
-    SESSION_LOG=$(journalctl -u gamescope-session --priority=err -n 30 2>/dev/null)
+    SESSION_LOG=$(journalctl -b 0 -u gamescope-session --priority=err -n 30 2>/dev/null)
     if [ -z "$SESSION_LOG" ]; then
-        SESSION_LOG=$(journalctl --user -u gamescope-session --priority=err -n 30 2>/dev/null)
+        SESSION_LOG=$(run_user journalctl --user -b 0 -u gamescope-session.service --priority=err -n 30 2>/dev/null)
     fi
     if [ -n "$SESSION_LOG" ]; then
         echo "$SESSION_LOG" | grep -iE 'error|warn|fail|core dump|terminate|abort' | head -10 || true
@@ -36,14 +52,40 @@ if command -v journalctl >/dev/null 2>&1; then
 
     sync
     echo "--- Session restart count ---"
-    SESSION_STARTS=$(journalctl -u gamescope-session 2>/dev/null | grep -c 'Started\|Starting' || true)
+    SESSION_STARTS=$(journalctl -b 0 -u gamescope-session 2>/dev/null | grep -c 'Started Gamescope' || true)
     if [ -z "$SESSION_STARTS" ] || [ "$SESSION_STARTS" -eq 0 ]; then
-        SESSION_STARTS=$(journalctl --user -u gamescope-session 2>/dev/null | grep -c 'Started\|Starting' || true)
+        SESSION_STARTS=$(run_user journalctl --user -b 0 -u gamescope-session.service 2>/dev/null | grep -c 'Started Gamescope Session' || true)
     fi
     RESTART_COUNT="${SESSION_STARTS:-0}"
     echo "  Gamescope session starts: ${RESTART_COUNT} (1 = normal, >1 indicates restarts)"
     if [ "${RESTART_COUNT:-0}" -gt 1 ]; then
         echo "  WARNING: Gamescope session restarted ${RESTART_COUNT} times. Possible compositor instability."
+    fi
+fi
+sync
+
+echo "--- MangoApp overlay health (current boot) ---"
+if command -v journalctl >/dev/null 2>&1; then
+    MANGO_LOG=$(run_user journalctl --user -b 0 -u gamescope-mangoapp.service 2>/dev/null | tail -80 || true)
+    FDINFO_ABORT=$(echo "$MANGO_LOG" | grep -E "Permission denied: '/proc/[0-9]+/fdinfo'" | tail -5 || true)
+    MANGO_ACTIVE=false
+    if run_user systemctl --user is-active --quiet gamescope-mangoapp.service 2>/dev/null; then
+        MANGO_ACTIVE=true
+    fi
+    if [ "$MANGO_ACTIVE" = "true" ]; then
+        echo "  MangoApp service is active."
+        if [ -n "$FDINFO_ABORT" ]; then
+            echo "  NOTE: This boot contains an earlier fdinfo permission abort, but the service has recovered."
+        fi
+    elif [ -n "$FDINFO_ABORT" ]; then
+        echo "$FDINFO_ABORT"
+        echo "  MANGOAPP_SIGNATURE: FDINFO_PERMISSION_ABORT"
+        echo "  A nondumpable client made /proc/<pid>/fdinfo unreadable and MangoApp aborted instead of skipping it."
+    elif echo "$MANGO_LOG" | grep -qiE 'Main process exited.*ABRT|Start request repeated too quickly|Failed with result'; then
+        echo "  WARNING: gamescope-mangoapp.service failed for another reason:"
+        echo "$MANGO_LOG" | grep -iE 'Main process exited|Start request repeated|Failed with result' | tail -10
+    else
+        echo "  MangoApp service is inactive; no fdinfo permission signature was found."
     fi
 fi
 sync

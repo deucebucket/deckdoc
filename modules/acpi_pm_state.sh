@@ -7,13 +7,14 @@ sync
 echo "--- Suspend/resume transitions (current boot) ---"
 if command -v journalctl >/dev/null 2>&1; then
     SUSPEND_COUNT=$(journalctl -b 0 2>/dev/null | grep -c 'PM: suspend entry' || true)
-    RESUME_COUNT=$(journalctl -b 0 2>/dev/null | grep -c 'PM: resume' || true)
+    # Current SteamOS kernels report a completed resume as "PM: suspend exit".
+    RESUME_COUNT=$(journalctl -b 0 2>/dev/null | grep -Ec 'PM: suspend exit|PM: resume' || true)
     echo "  Suspend entries: ${SUSPEND_COUNT}"
     echo "  Resume entries:  ${RESUME_COUNT}"
 
     if journalctl -b 0 2>/dev/null | grep -q 'PM: suspend entry'; then
         echo "  Last suspend/resume cycle:"
-        journalctl -b 0 2>/dev/null | grep -E 'PM: suspend entry|PM: resume' | tail -4
+        journalctl -b 0 2>/dev/null | grep -E 'PM: suspend entry|PM: suspend exit|PM: resume' | tail -6
     fi
 fi
 sync

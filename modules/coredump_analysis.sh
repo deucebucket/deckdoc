@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+SESSION_USER="${DECKDOC_SESSION_USER:-${SUDO_USER:-$(id -un)}}"
+SESSION_UID=$(id -u "$SESSION_USER" 2>/dev/null || echo "")
+
+run_user() {
+    if [ "$(id -un)" = "$SESSION_USER" ]; then
+        XDG_RUNTIME_DIR="/run/user/${SESSION_UID}" "$@"
+    else
+        runuser -u "$SESSION_USER" -- env XDG_RUNTIME_DIR="/run/user/${SESSION_UID}" "$@"
+    fi
+}
+
 echo "[MODULE: Core Dump / Crash Analysis]"
 sync
 
@@ -18,6 +29,19 @@ sync
 
 echo "--- Recent crashes (last 10) ---"
 coredumpctl list 2>/dev/null | tail -10 || echo "No core dumps recorded."
+sync
+
+echo "--- Steam Deck overlay crash signature ---"
+MANGOAPP_DUMPS=$(coredumpctl list 2>/dev/null | grep -c '/mangoapp' || true)
+echo "  MangoApp dumps: ${MANGOAPP_DUMPS}"
+if command -v journalctl >/dev/null 2>&1; then
+    FDINFO_ABORT=$(run_user journalctl --user -b 0 -u gamescope-mangoapp.service 2>/dev/null | grep -E "Permission denied: '/proc/[0-9]+/fdinfo'" | tail -5 || true)
+    if [ -n "$FDINFO_ABORT" ]; then
+        echo "$FDINFO_ABORT"
+        echo "  CRASH_SIGNATURE: MANGOAPP_FDINFO_PERMISSION_ABORT"
+        echo "  Inspect clients that set PR_SET_DUMPABLE=0; this can restrict /proc/<pid>/fdinfo even for the same user."
+    fi
+fi
 sync
 
 echo "--- Signal analysis ---"
