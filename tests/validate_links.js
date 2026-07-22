@@ -4,7 +4,11 @@
 const fs = require("fs");
 const path = require("path");
 const root = path.resolve(__dirname, "..");
-const markdown = [path.join(root, "README.md"), path.join(root, "ROADMAP.md")];
+const markdown = [
+  path.join(root, "README.md"),
+  path.join(root, "ROADMAP.md"),
+  path.join(root, "CHANGELOG.md"),
+];
 
 function walk(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {

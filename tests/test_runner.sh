@@ -2,12 +2,13 @@
 set -euo pipefail
 
 DECKDOC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly DECKDOC_VERSION="$(<"${DECKDOC_DIR}/VERSION")"
 TEST_ENV="$(mktemp -d /tmp/deckdoc-test.XXXXXX)"
 cleanup() { rm -rf -- "${TEST_ENV}"; }
 trap cleanup EXIT
 
 echo "========================================="
-echo "DeckDoc v3.2.0 — Test Runner"
+echo "DeckDoc v${DECKDOC_VERSION} — Test Runner"
 echo "========================================="
 
 # === Test 1: Mock sysfs structure ===
@@ -603,7 +604,26 @@ else
     exit 1
 fi
 
+# === Test 28: Release metadata remains synchronized ===
+echo ""
+echo "--- Test 28: Release metadata consistency ---"
+if [[ "$DECKDOC_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && \
+   grep -Fq "DeckDoc v\${DECKDOC_VERSION}" "${DECKDOC_DIR}/deckdoc.sh" && \
+   grep -Fq "DeckDoc v\${DECKDOC_VERSION}" "${DECKDOC_DIR}/setup.sh" && \
+   grep -Fq 'readonly VERSION="$(<"${SOURCE_DIR}/VERSION")"' \
+      "${DECKDOC_DIR}/privileged/install-authorized.sh" && \
+   grep -Fq "## [${DECKDOC_VERSION}]" "${DECKDOC_DIR}/CHANGELOG.md" && \
+   grep -Fq "v${DECKDOC_VERSION}" "${DECKDOC_DIR}/README.md" && \
+   grep -Fq "DeckDoc v${DECKDOC_VERSION}" "${DECKDOC_DIR}/ROADMAP.md" && \
+   grep -Fq "DeckDoc v${DECKDOC_VERSION}" "${DECKDOC_DIR}/docs/index.html" && \
+   [ -f "${DECKDOC_DIR}/LICENSE" ]; then
+    echo "  PASS: VERSION, runtime output, release docs, site, and license agree on v${DECKDOC_VERSION}."
+else
+    echo "  FAIL: Release metadata is missing or inconsistent with VERSION=${DECKDOC_VERSION}."
+    exit 1
+fi
+
 echo ""
 echo "========================================="
-echo "All scaffold tests completed successfully."
+echo "All DeckDoc tests completed successfully."
 echo "========================================="

@@ -1,5 +1,9 @@
 # DeckDoc
 
+**Current source release: v3.3.0** · [Changelog](CHANGELOG.md) ·
+[Roadmap](ROADMAP.md) · [DeckMD](https://deucebucket.github.io/deckdoc/) ·
+[Diagnostic wiki](https://github.com/deucebucket/deckdoc/wiki)
+
 DeckDoc is a full-system Steam Deck diagnostic and incident-response platform. It helps answer the
 larger question behind almost every Deck failure: **what actually failed, what evidence supports that
 conclusion, and what is the safest next action?**
@@ -197,6 +201,8 @@ privileged/               one-time approved, exact-command diagnostic broker
 config/                   optional Gamescope policy template
 docs/wiki/                GitHub-wiki-ready diagnostic center
 tests/test_runner.sh      mocked behavior and safety regression checks
+VERSION                   canonical source release version
+CHANGELOG.md              release history and current unreleased state
 remediation_backups/      created only when a remediation records state
 logs/                     generated reports; ignored by Git
 ```
@@ -241,4 +247,4 @@ and production hardening/signing of the probe and Rescue image.
 
 ## License
 
-MIT
+[MIT](LICENSE)

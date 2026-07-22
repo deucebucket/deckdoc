@@ -31,6 +31,12 @@ fi
 
 DECKDOC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export DECKDOC_DIR
+if [ -r "${DECKDOC_DIR}/VERSION" ]; then
+    DECKDOC_VERSION=$(<"${DECKDOC_DIR}/VERSION")
+else
+    DECKDOC_VERSION="unknown"
+fi
+readonly DECKDOC_VERSION
 MODULES_DIR="${DECKDOC_DIR}/modules"
 LOG_DIR="${DECKDOC_LOG_DIR:-${DECKDOC_DIR}/logs}"
 REPORT_FILE="${LOG_DIR}/deckdoc_master_report_$(date +%s).log"
@@ -44,7 +50,7 @@ panic_sync() {
 trap panic_sync EXIT HUP INT QUIT TERM
 
 echo "========================================" > "${REPORT_FILE}"
-echo "DeckDoc v3.2.0 - Diagnostics + Safe Remediation" >> "${REPORT_FILE}"
+echo "DeckDoc v${DECKDOC_VERSION} - Diagnostics + Safe Remediation" >> "${REPORT_FILE}"
 echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "${REPORT_FILE}"
 echo "Reported symptom: display-black=${DISPLAY_BLACK_REPORTED}" >> "${REPORT_FILE}"
 echo "========================================" >> "${REPORT_FILE}"
