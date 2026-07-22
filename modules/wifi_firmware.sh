@@ -14,7 +14,10 @@ fi
 
 echo "--- Network interface status ---"
 if command -v ip >/dev/null 2>&1; then
-    WLAN_IFACE=$(ip -o link show 2>/dev/null | awk -F': ' '$2 ~ /^(wlan[0-9]+|wl[^:]+)$/ {print $2; exit}' || true)
+    WLAN_IFACE="${DECKDOC_WIFI_INTERFACE:-}"
+    if [ -z "$WLAN_IFACE" ]; then
+        WLAN_IFACE=$(ip -o link show 2>/dev/null | awk -F': ' '$2 ~ /^(wlan[0-9]+|wl[^:]+)$/ {print $2; exit}' || true)
+    fi
     if [ -n "$WLAN_IFACE" ]; then
         WLAN_STATE=$(ip link show "$WLAN_IFACE" 2>/dev/null | grep -oE 'state (UP|DOWN|UNKNOWN)' || echo "state UNKNOWN")
         echo "  Interface: ${WLAN_IFACE} ${WLAN_STATE}"

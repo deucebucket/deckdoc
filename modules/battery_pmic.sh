@@ -4,7 +4,7 @@ set -uo pipefail
 echo "[MODULE: Battery IC & PMIC]"
 sync
 
-BAT_DIR="/sys/class/power_supply/BAT1"
+BAT_DIR="${DECKDOC_BATTERY_PATH:-/sys/class/power_supply/BAT1}"
 
 if [ ! -d "$BAT_DIR" ]; then
     BAT_DIR="/sys/class/power_supply/BAT0"

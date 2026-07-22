@@ -45,35 +45,37 @@ DeckDoc counts only actual minidump/core filename classes; normal bookkeeping fi
 are not crashes.
 
 If the optional [continuous probe](Continuous-Incident-Probe.md) captured the incident, preserve its
-whole private directory before rebooting or purging. A normal `sudo ./deckdoc.sh` includes the latest
+whole incident directory before rebooting or purging. A normal `sudo ./deckdoc.sh` includes the latest
 incident, but an older incident may provide the comparison that matters.
 
-## Privacy review
+## Public-safe collection contract
 
-Assume a report can contain:
+DeckDoc runs all full-report, remediation, continuous-probe, and Rescue text through the same
+public-safe filter before writing it to persistent storage. It deliberately retains no raw report
+variant. The capability JSON is built from an explicit allowlist rather than a dump.
 
-- Wi-Fi SSID/BSSID and network interface addresses;
-- hostname and local usernames;
-- home-directory paths;
-- game names, Steam AppIDs, launch arguments, and process command lines;
-- mounted device labels and paths;
-- plugin names and third-party software;
-- timestamps and usage patterns;
-- hardware identifiers or serial-like values in manually added logs.
+The filter removes or pseudonymizes credential-bearing lines, private/secret keys, authorization and
+cookie data, SSIDs/BSSIDs, serial and machine IDs, hostname, email, MAC/IP addresses, Steam account
+IDs, UUIDs, URLs, and user/removable/temp paths. Collection modules also minimize source data: they
+count core and Steam artifacts rather than retaining arbitrary filenames or process inventories, and
+they omit mount labels and mount points.
 
-Search before posting:
+“Public-safe” is a collection invariant, not permission to upload blindly. An upstream component can
+introduce a new identifier format, and diagnostic timestamps or software names may still be sensitive
+to a particular user. Review before posting:
 
 ```bash
-rg -n -i 'ssid|bssid|serial|hostname|/home/|command line|ipv4|ipv6|mac' \
+rg -n -i 'password|token|cookie|ssid|bssid|serial|hostname|/home/|/var/home/|ipv4|ipv6|mac' \
   logs/deckdoc_master_report_*.log
 ```
 
-Make a redacted copy. Keep the original private. Replace sensitive values consistently so correlations
-remain readable, for example `HOME_USER`, `WIFI_NAME`, or `BSSID_1`.
-
 Never publish passwords, API tokens, session cookies, Steam Guard codes, SSH private keys, browser
 profiles, complete environment dumps, or raw core dumps without understanding their contents. A core
-dump can contain process memory and secrets.
+dump can contain process memory and secrets; DeckDoc never collects raw core contents.
+
+If a future DeckDoc output exposes one of these values, treat it as a security/privacy bug and do not
+share that artifact. The regression suite seeds fake secrets and identifiers to prevent known classes
+from returning.
 
 ## A useful bug report
 

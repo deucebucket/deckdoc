@@ -69,5 +69,5 @@ if [ -r "${LATEST}/journal.log" ]; then
 else
     echo "  Journal window inaccessible."
 fi
-echo "  PRIVACY: Probe captures are unredacted. Review network, username, path, serial, and command-line data before sharing."
+echo "  PRIVACY: Probe captures are public-safe filtered before disk write; no raw copy is retained. Review before sharing."
 sync

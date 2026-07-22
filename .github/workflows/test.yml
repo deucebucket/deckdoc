@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 22
       - name: Shell syntax
-        run: bash -n deckdoc.sh setup.sh modules/*.sh probe/*.sh bootprobe/*.sh privileged/* tests/*.sh
+        run: bash -n deckdoc.sh setup.sh lib/*.sh modules/*.sh probe/*.sh bootprobe/*.sh privileged/* tests/*.sh
       - name: Regression and safety suite
         run: bash tests/test_runner.sh
       - name: Documentation links

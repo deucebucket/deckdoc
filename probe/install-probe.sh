@@ -3,6 +3,7 @@ set -euo pipefail
 
 ACTION="${1:-status}"
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SOURCE_DIR}/.." && pwd)"
 STATE_DIR="/var/lib/deckdoc-probe"
 BIN_DIR="${STATE_DIR}/bin"
 UNIT_PATH="/etc/systemd/system/deckdoc-probe.service"
@@ -25,6 +26,7 @@ install_probe() {
 
     install -d -o root -g root -m 700 "$STATE_DIR" "$BIN_DIR"
     install -o root -g root -m 755 "${SOURCE_DIR}/deckdoc-probe.sh" "${BIN_DIR}/deckdoc-probe.sh"
+    install -o root -g root -m 755 "${PROJECT_DIR}/lib/deckdoc-redact.sh" "${BIN_DIR}/deckdoc-redact.sh"
     install -o root -g root -m 644 "${SOURCE_DIR}/deckdoc-probe.service" "$UNIT_PATH"
     {
         echo "DECKDOC_PROBE_STATE_DIR=${STATE_DIR}"
@@ -39,7 +41,7 @@ install_probe() {
     chmod 600 "$CONFIG_PATH"
     systemctl daemon-reload
     systemctl enable --now deckdoc-probe.service
-    echo "DeckDoc probe installed and started. Captures remain private in ${STATE_DIR}/events."
+    echo "DeckDoc probe installed and started. Captures are public-safe filtered and stored in ${STATE_DIR}/events."
 }
 
 uninstall_probe() {
@@ -47,6 +49,7 @@ uninstall_probe() {
     systemctl disable --now deckdoc-probe.service 2>/dev/null || true
     if [ "$UNIT_PATH" = "/etc/systemd/system/deckdoc-probe.service" ]; then rm -f -- "$UNIT_PATH"; fi
     if [ -f "${BIN_DIR}/deckdoc-probe.sh" ]; then rm -f -- "${BIN_DIR}/deckdoc-probe.sh"; fi
+    if [ -f "${BIN_DIR}/deckdoc-redact.sh" ]; then rm -f -- "${BIN_DIR}/deckdoc-redact.sh"; fi
     if [ -d "$BIN_DIR" ]; then rmdir "$BIN_DIR" 2>/dev/null || true; fi
     if [ "$CONFIG_PATH" = "/etc/deckdoc-probe.conf" ]; then rm -f -- "$CONFIG_PATH"; fi
     systemctl daemon-reload

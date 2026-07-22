@@ -75,22 +75,22 @@ echo ""
 echo "--- Test 5: Module count ---"
 MODULE_COUNT=$(ls -1 "${DECKDOC_DIR}"/modules/*.sh | wc -l)
 echo "  Total modules: ${MODULE_COUNT}"
-if [ "$MODULE_COUNT" -eq 19 ]; then
-    echo "  PASS: Expected 19 modules present (17 diagnostic + 2 remediation)."
+if [ "$MODULE_COUNT" -eq 21 ]; then
+    echo "  PASS: Expected 21 modules present (19 diagnostic + 2 remediation)."
 else
-    echo "  FAIL: Expected 19 modules, found ${MODULE_COUNT}."
+    echo "  FAIL: Expected 21 modules, found ${MODULE_COUNT}."
     exit 1
 fi
 
 # === Test 6: deckdoc.sh launches all modules ===
 echo ""
 echo "--- Test 6: Parallel module launch check ---"
-LAUNCH_COUNT=$(grep -c '"${MODULES_DIR}/.*\.sh".*&[[:space:]]*$' "${DECKDOC_DIR}/deckdoc.sh" 2>/dev/null || echo 0)
+LAUNCH_COUNT=$(grep -c '^run_module "${MODULES_DIR}/.*\.sh" .*&[[:space:]]*$' "${DECKDOC_DIR}/deckdoc.sh" 2>/dev/null || echo 0)
 echo "  Module launches in deckdoc.sh: ${LAUNCH_COUNT}"
-if [ "$LAUNCH_COUNT" -eq 17 ]; then
-    echo "  PASS: All 17 diagnostic modules launched in parallel."
+if [ "$LAUNCH_COUNT" -eq 18 ]; then
+    echo "  PASS: All 18 subsystem diagnostic modules launched in parallel."
 else
-    echo "  FAIL: Expected 17 module launches, found ${LAUNCH_COUNT}."
+    echo "  FAIL: Expected 18 module launches, found ${LAUNCH_COUNT}."
     exit 1
 fi
 
@@ -224,9 +224,10 @@ PATH="${TEST_ENV}/bin:${PATH}" DECKDOC_SKIP_JOURNAL=1 \
 if grep -q 'Historical MangoApp dumps:   7' "$CORE_REPORT" && \
    grep -q 'Current-boot MangoApp dumps: 0' "$CORE_REPORT" && \
    grep -q 'Current-boot SIGABRT.*:.*1' "$CORE_REPORT" && \
-   grep -Eq '/usr/bin/mangoapp[[:space:]]+7 crashes' "$CORE_REPORT" && \
+   grep -q 'Total retained core dumps: 8' "$CORE_REPORT" && \
+   ! grep -q '/home/deck\|/usr/bin/mangoapp' "$CORE_REPORT" && \
    ! grep -q 'CRITICAL: Elevated current-boot crash rate' "$CORE_REPORT"; then
-    echo "  PASS: Retained crashes are aggregated but do not trigger a current-boot critical."
+    echo "  PASS: Retained crashes are safely aggregated but do not trigger a current-boot critical."
 else
     echo "  FAIL: Historical and current-boot crashes were conflated."
     cat "$CORE_REPORT"
@@ -476,7 +477,7 @@ PROBE_REPORT="${TEST_ENV}/probe-report.txt"
 DECKDOC_PROBE_STATE_DIR="$PROBE_STATE" "${DECKDOC_DIR}/modules/probe_incidents.sh" > "$PROBE_REPORT"
 if [ -f "${PROBE_LATEST}/metadata.txt" ] && [ -f "${PROBE_LATEST}/state.log" ] && \
    [ -f "${PROBE_LATEST}/journal.log" ] && grep -q 'category=manual' "$PROBE_REPORT"; then
-    echo "  PASS: Probe captures a bounded private incident and the main report can ingest it."
+    echo "  PASS: Probe captures a bounded public-safe incident and the main report can ingest it."
 else
     echo "  FAIL: Probe capture/report integration is incomplete."
     exit 1
@@ -488,9 +489,9 @@ echo "--- Test 23: Probe service safety contract ---"
 if grep -q 'systemctl enable --now deckdoc-probe.service' "${DECKDOC_DIR}/probe/install-probe.sh" && \
    grep -q 'ProtectSystem=strict' "${DECKDOC_DIR}/probe/deckdoc-probe.service" && \
    grep -q 'ReadWritePaths=/var/lib/deckdoc-probe' "${DECKDOC_DIR}/probe/deckdoc-probe.service" && \
-   grep -q 'Captures are private but unredacted' "${DECKDOC_DIR}/probe/deckdoc-probe.sh" && \
+   grep -q 'Captures are public-safe filtered before being written' "${DECKDOC_DIR}/probe/deckdoc-probe.sh" && \
    ! grep -q 'install_probe' "${DECKDOC_DIR}/setup.sh"; then
-    echo "  PASS: Continuous monitoring remains opt-in, resource-limited, private, and read-only."
+    echo "  PASS: Continuous monitoring remains opt-in, resource-limited, public-safe filtered, and read-only."
 else
     echo "  FAIL: Probe opt-in or service safety boundary is incomplete."
     exit 1
@@ -622,6 +623,24 @@ else
     echo "  FAIL: Release metadata is missing or inconsistent with VERSION=${DECKDOC_VERSION}."
     exit 1
 fi
+
+# === Test 29: Public-safe output contract ===
+echo ""
+echo "--- Test 29: Public-safe output filtering ---"
+"${DECKDOC_DIR}/tests/validate_privacy.sh"
+echo "  PASS: Main, probe, and Rescue collection filter sensitive output before disk write."
+
+# === Test 30: Model and capability manifest ===
+echo ""
+echo "--- Test 30: Model and capability manifest ---"
+"${DECKDOC_DIR}/tests/validate_manifest.sh"
+echo "  PASS: Model-aware discovery distinguishes applicability, absence, and inaccessibility."
+
+# === Test 31: RyuDeck application adapter ===
+echo ""
+echo "--- Test 31: RyuDeck application diagnostics ---"
+"${DECKDOC_DIR}/tests/validate_ryudeck.sh"
+echo "  PASS: RyuDeck startup stalls, cache suspicion, renderer failure, rendering, and privacy remain distinct."
 
 echo ""
 echo "========================================="

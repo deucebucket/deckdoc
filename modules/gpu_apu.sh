@@ -32,7 +32,7 @@ if command -v dmesg >/dev/null 2>&1; then
 fi
 
 CPU_FREQ_FILE="/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"
-GPU_FREQ_FILE="/sys/class/drm/card0/device/pp_dpm_sclk"
+GPU_FREQ_FILE="${DECKDOC_DRM_CARD_PATH:-/sys/class/drm/card0}/device/pp_dpm_sclk"
 
 if [ -f "$CPU_FREQ_FILE" ]; then
     CPU_FREQ=$(cat "$CPU_FREQ_FILE")

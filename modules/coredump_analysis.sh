@@ -70,26 +70,17 @@ count_records() {
     '
 }
 
-echo "--- Historical crash count by executable (retained records) ---"
-# coredumpctl's executable is two fields after the signal regardless of the
-# localized date/time prefix. Aggregate that field only; the previous parser
-# accidentally treated every whole row as a unique executable.
-COUNTS=$(printf '%s\n' "$ALL_DUMPS" | awk '
-    {
-        for (i=1; i<=NF; i++) {
-            if ($i ~ /^SIG[A-Z0-9]+$/ && $(i+2) != "") { count[$(i+2)]++; break }
-        }
-    }
-    END { for (exe in count) printf "  %-52s %d crashes\n", exe, count[exe] }
-' | sort -k2,2nr)
-if [ -n "$COUNTS" ]; then echo "$COUNTS"; else echo "  No retained core dumps."; fi
+echo "--- Historical crash families (retained records) ---"
+TOTAL_RETAINED=$(count_records "$ALL_DUMPS")
+echo "  Total retained core dumps: ${TOTAL_RETAINED}"
+echo "  Executable names outside DeckDoc's fixed system-family allowlist are intentionally omitted."
 sync
 
 echo "--- Current-boot crashes ---"
 BOOT_DUMP_COUNT=$(count_records "$BOOT_DUMPS")
 echo "  Current-boot core dumps: ${BOOT_DUMP_COUNT}"
 if [ "$BOOT_DUMP_COUNT" -gt 0 ]; then
-    printf '%s\n' "$BOOT_DUMPS" | tail -10
+    echo "  Raw coredump rows and executable paths are intentionally omitted from public-safe reports."
 else
     echo "  No core dumps in the current boot."
 fi
@@ -160,6 +151,6 @@ fi
 sync
 
 echo "--- Desktop environment stability ---"
-DESKTOP_DUMPS=$(printf '%s\n' "$ALL_DUMPS" | grep -iE 'kwin_wayland|plasmashell|plasma_session' | tail -5 || true)
-if [ -n "$DESKTOP_DUMPS" ]; then echo "$DESKTOP_DUMPS"; else echo "No desktop environment crashes recorded."; fi
+DESKTOP_DUMP_COUNT=$(printf '%s\n' "$ALL_DUMPS" | grep -icE 'kwin_wayland|plasmashell|plasma_session' || true)
+echo "  Known KDE desktop-family crashes: ${DESKTOP_DUMP_COUNT}"
 sync

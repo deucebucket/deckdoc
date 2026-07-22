@@ -55,6 +55,8 @@ install_authorization() {
     for module in "${SOURCE_DIR}"/modules/*.sh; do
         install -o root -g root -m 755 "$module" "${APP_DIR}/modules/$(basename "$module")"
     done
+    install -d -o root -g root -m 755 "${APP_DIR}/lib"
+    install -o root -g root -m 755 "${SOURCE_DIR}/lib/deckdoc-redact.sh" "${APP_DIR}/lib/deckdoc-redact.sh"
     install -o root -g root -m 755 "${SOURCE_DIR}/privileged/deckdoc-authorized" "$BROKER"
     printf '%s\n' "$VERSION" > "${INSTALL_ROOT}/VERSION"
     chown root:root "${INSTALL_ROOT}/VERSION"

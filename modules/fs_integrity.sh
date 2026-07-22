@@ -8,11 +8,13 @@ echo "--- BTRFS Stats Check ---"
 if command -v btrfs >/dev/null 2>&1; then
     if mount | grep -q 'btrfs'; then
         BTRFS_MOUNTS=$(mount | grep 'btrfs' | awk '{print $3}')
+        BTRFS_INDEX=0
         for mnt in $BTRFS_MOUNTS; do
-            echo "Checking btrfs device stats for $mnt:"
+            BTRFS_INDEX=$((BTRFS_INDEX + 1))
+            echo "Checking btrfs device stats for mounted filesystem ${BTRFS_INDEX}:"
             btrfs device stats "$mnt" 2>/dev/null || \
                 sudo -n btrfs device stats "$mnt" 2>/dev/null || \
-                echo "CRITICAL: btrfs device stats failed on $mnt (needs root)."
+                echo "CRITICAL: btrfs device stats failed on mounted filesystem ${BTRFS_INDEX} (needs root)."
             sync
         done
     else

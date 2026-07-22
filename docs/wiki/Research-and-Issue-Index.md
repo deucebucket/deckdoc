@@ -39,15 +39,16 @@ multi-plane LCD signature.
 
 | Issue | Scope | Current branch |
 |---|---|---|
-| [#15](https://github.com/deucebucket/deckdoc/issues/15) | Model and capability manifest | Priority foundation; not implemented yet |
+| [#15](https://github.com/deucebucket/deckdoc/issues/15) | Model and capability manifest | Schema-v1 baseline and first consumers shipped; expansion remains |
 | [#16](https://github.com/deucebucket/deckdoc/issues/16) | Reproducible, signed DeckDoc Rescue | Alpha collector and builder added |
 | [#17](https://github.com/deucebucket/deckdoc/issues/17) | Unified incident timeline and evidence-access ledger | Source data exists; normalization remains |
 | [#18](https://github.com/deucebucket/deckdoc/issues/18) | Continuous-probe production hardening | Opt-in bounded prototype added |
 | [#19](https://github.com/deucebucket/deckdoc/issues/19) | Privileged authorization security review | Exact-command broker prototype added |
 | [#20](https://github.com/deucebucket/deckdoc/issues/20) | Dock/USB-C/PD validation | Read-only module and fixtures added |
 | [#21](https://github.com/deucebucket/deckdoc/issues/21) | Network stages, Bluetooth/input, and update health | Wiki routes exist; module gaps remain |
-| [#22](https://github.com/deucebucket/deckdoc/issues/22) | Redacted bundle and storage-risk gate | Safety requirements documented; implementation remains |
+| [#22](https://github.com/deucebucket/deckdoc/issues/22) | Redacted bundle and storage-risk gate | Pre-write public-safe filtering shipped; formal bundle and storage gate remain |
 | [#23](https://github.com/deucebucket/deckdoc/issues/23) | DeckMD GitHub Pages symptom checker | Static checker and schema validation added |
+| [#27](https://github.com/deucebucket/deckdoc/issues/27) | First-class application diagnostic adapters | RyuDeck structured/privacy-safe baseline added; generic schema and more apps remain |
 
 The [deep research catalog](../research/steamdeck-issue-deep-dive.md) covers 33 failure families,
 decision boundaries, detector candidates, and primary sources behind these priorities.

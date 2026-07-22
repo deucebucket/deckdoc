@@ -29,10 +29,13 @@ sudo ./bootprobe/deckdoc-rescue-collect.sh \
   --output-dir /path/to/removable-media
 ```
 
-The collector creates a private archive with live PCI/USB/block/Type-C/PD/DRM/network/thermal/power
+The collector creates a public-safe filtered archive with live PCI/USB/block/Type-C/PD/DRM/network/thermal/power
 state, rescue-boot journal, NVMe health, EFI boot entries, and installed boot indexes/current/previous
 journals where systemd can dissect the image. `journalctl --image=` is the documented image reader;
 the collector never mounts the disk. See [systemd journalctl](https://www.freedesktop.org/software/systemd/man/latest/journalctl.html).
+
+Every text stream is filtered before its case file is written, and no raw archive is retained. Review
+the result before sharing because rescue tools and upstream log formats can introduce new fields.
 
 If the installed image cannot be dissected, the report says inaccessible. It must not silently remount
 or repair it. Encrypted or unusual layouts require a separate, explicit evidence-preserving workflow.
