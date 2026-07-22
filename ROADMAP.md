@@ -1,97 +1,84 @@
-# DeckDoc v3.1 — Roadmap: Diagnosis → Safe Remediation
+# DeckDoc v3.2 roadmap — full-system diagnostics and incident response
 
-v2.0 added 9 new diagnostic modules covering software/OS failure modes. v3.0 shifts focus from **detecting** failures to **automatically remediating** them — and building the feedback loop that tells you whether the fix worked.
+DeckDoc's product is evidence, correlation, and safe decision support. It should help a user separate
+application/configuration faults, SteamOS/driver faults, accessory or dock faults, and strong hardware
+suspicion without turning one log line into a verdict. Automatic remediation stays intentionally
+narrow and is not the measure of project coverage.
 
-## Implemented (v2.0 / v3.0)
+## Current platform
 
-| Module | Detects | Status |
-|---|---|---|
-| gpu_apu.sh | CPU 400MHz lock, GPU 200MHz SCLK lock, GPU reset outcome | Delivered |
-| battery_pmic.sh | Deep discharge, trickle-charge, cell degradation | Delivered |
-| thermal_fan.sh | Thermal trip > 90°C, fan failure (0 RPM) | Delivered |
-| storage_smart.sh | NVMe SMART health (sudo fallback) | Delivered |
-| fs_integrity.sh | BTRFS corruption, EXT4 state (sudo fallback) | Delivered |
-| audio_sof.sh | SOF DSP panic, IPC error -22, pipeline resume failure | Delivered |
-| display_blackout.sh | eDP disconnection, backlight=0, wrong ACPI sleep state, modesetting errors | Delivered |
-| coredump_analysis.sh | systemd-coredump crash counts, signal profiling | Delivered |
-| wifi_firmware.sh | ath11k/iwlwifi firmware crash, wlan0 state | Delivered |
-| gamescope_session.sh | Session restarts, Vulkan descriptor failures | Delivered |
-| memory_swap.sh | OOM events, memory pressure, swap analysis | Delivered |
-| steam_client_logs.sh | /tmp/dumps/ crash inventory, stdout errors | Delivered |
-| mmc_sd_card.sh | mmc driver errors, ext4 corruption on SD | Delivered |
-| acpi_pm_state.sh | Suspend/resume failures, fan-after-wake bug | Delivered |
-| dxvk_page_fault.sh | GPU page fault classification (CB/DB/CPF) | Delivered |
+| Capability | Current state |
+|---|---|
+| Full report | 17 read-only modules across GPU, power, thermal, storage, filesystems, audio, display, docks, crashes, Wi-Fi, Gamescope, memory, probe history, Steam, microSD, resume, and GPU page faults |
+| Incident probe | Opt-in bounded event capture prototype; private, resource-limited, no remediation |
+| Dock analysis | USB/Type-C/PD/Alt Mode/display/Ethernet evidence and current-boot path-error correlation |
+| DeckDoc Rescue | Read-only collector plus unsigned ArchISO alpha builder for outside-OS comparison |
+| DeckMD | Static local-only symptom checker with progressive questions and ranked diagnostic branches |
+| Diagnostic wiki | Symptom routes, evidence interpretation, safe contrasts, recovery, and hardware decisions |
+| Privileged collection | One-time approved, exact-command, root-owned diagnostic broker prototype |
+| Remediation | Two guarded signature-specific paths: SOF reload and Gamescope forced-composition test |
 
-## Delivered (v3.0)
+## P0 — trustworthy evidence foundation
 
-| Module | Action | Status |
-|---|---|---|
-| **rem_audio_sof.sh** | Reload snd_sof_amd_vangogh, verify aplay recovery, PRE_CHECK/BACKUP/EXECUTE/VERIFY/REPORT lifecycle | Delivered |
-| deckdoc.sh --fix flag | Runs remediation modules after diagnostics, requires explicit flag | Delivered |
-| **rem_display_blackout.sh** | Force one composed Gamescope scanout plane after live-panel prechecks; persistent policy survives per-app convar resets | Delivered |
-| display-black signature | Correlate physical black with live eDP, EDID, backlight, CRTC, and multi-plane state | Delivered |
-| MangoApp fdinfo signature | Separate MangoApp overlay aborts from Gamescope compositor crashes | Delivered |
+### [#15 Model and capability manifest](https://github.com/deucebucket/deckdoc/issues/15)
 
-## v3.0 — Remediation Modules (Remaining)
+Identify model, OS/build/slot, drivers, devices, and supported evidence sources before interpreting
+their presence or absence. Modules must not assume LCD/OLED behavior, device indices, or driver names.
 
-### P0 — Must Have
+### [#17 Unified timeline and access ledger](https://github.com/deucebucket/deckdoc/issues/17)
 
-| Module | Trigger | Remediation Action |
-|---|---|---|
-| **rem_wifi_firmware.sh** | wifi_firmware.sh: wlan0 DOWN or firmware crash | `sudo modprobe -r ath11k_pci && sudo modprobe ath11k_pci`, then verify `ip link show wlan0` shows UP. |
-| **rem_coredump_cleanup.sh** | coredump_analysis.sh: >100 dumps | `sudo rm /var/lib/systemd/coredump/*.zst` older than 30 days, report freed space. |
-| **rem_gpu_recovery_advice.sh** | gpu_apu.sh: GPU reset failed (hard lock) | Preserve logs, stop remediation, and advise an orderly reboot. DeckDoc will not power-cycle GPU or panel sysfs nodes. |
+Normalize boot IDs, time scopes, sources, events, and permission/retention state. “No matching event,”
+“not retained,” “permission denied,” and “not applicable” must remain different outcomes.
 
-### P1 — Should Have
+### [#22 Safe redacted bundle and storage-risk gate](https://github.com/deucebucket/deckdoc/issues/22)
 
-| Module | Trigger | Remediation Action |
-|---|---|---|
-| **rem_oom_protection.sh** | memory_swap.sh: MemAvailable < 1GB | Recommend closing games, list top memory consumers by %mem. Non-destructive advisory only. |
-| **rem_fan_recovery.sh** | acpi_pm_state.sh + thermal_fan.sh: fan 0 RPM after resume | `sudo systemctl restart jupiter-fan-control`, verify RPM returns in 10s. |
-| **rem_steam_cache.sh** | steam_client_logs.sh: shader cache errors | Identify the affected title cache and offer a recoverable, title-scoped move after confirmation. |
-| **rem_btrfs_scrub.sh** | fs_integrity.sh: BTRFS corruption > 0 | `sudo btrfs scrub start /` and report progress. |
+Stop normal writes when storage evidence threatens data, then produce separate private/raw and reviewed,
+redacted bundles without automatic upload.
 
-### P2 — Nice to Have
+## P1 — productionize the new diagnostic modes
 
-| Module | Trigger | Remediation Action |
-|---|---|---|
-| **rem_battery_calibrate.sh** | battery_pmic.sh: `energy_full` / `energy_full_design` ratio < 60% or voltage desync | Guide user through full discharge/charge calibration cycle. |
-| **rem_sd_repair.sh** | mmc_sd_card.sh: EXT4 errors on mmc | Resolve and display the exact unmounted partition, then require explicit confirmation before repair. |
-| **rem_gamescope_restart.sh** | gamescope_session.sh: >3 session restarts | Kill stale gamescope processes, restart session cleanly. |
-| **rem_dxvk_cache.sh** | dxvk_page_fault.sh: CB/DB page faults in specific game | Clear DXVK state cache for that title ID. |
+- [#18 Continuous probe](https://github.com/deucebucket/deckdoc/issues/18): measure overhead, harden
+  suspend/restart/rotation behavior, expand fixtures, and integrate the incident timeline.
+- [#16 DeckDoc Rescue](https://github.com/deucebucket/deckdoc/issues/16): pin and reproduce builds,
+  sign releases, boot-test LCD/OLED, and document authenticated docked-Ethernet support.
+- [#20 Dock/USB-C/PD](https://github.com/deucebucket/deckdoc/issues/20): validate official and
+  third-party paths and generate direct-vs-dock differential summaries.
+- [#19 Privileged authorization](https://github.com/deucebucket/deckdoc/issues/19): adversarially
+  review the allowlist, snapshot integrity, output path, environment, and revocation flow.
+- [#23 DeckMD](https://github.com/deucebucket/deckdoc/issues/23): deploy Pages, share a versioned
+  vocabulary, expand rules, and complete keyboard/touch/responsive/accessibility validation.
 
-### Non-Functional Improvements
+## P2 — close broad subsystem gaps
 
-- `--fix` flag: `./deckdoc.sh --fix` runs all remediation modules after diagnosis
-- `--watch` mode: Run in a loop with configurable interval for thermal/memory trend monitoring
-- JSON output: Machine-parseable output alongside human-readable logs
-- USB bootable mode: Run from recovery media to diagnose unbootable SteamOS installations
-- Report upload: Optional `gh issue` creation with diagnostic output attached
+[#21](https://github.com/deucebucket/deckdoc/issues/21) covers three evidence families:
 
-## Architecture for Remediation
+- staged networking from device and association through route, gateway, DNS, VPN/captive portal, and
+  service reachability;
+- Bluetooth, HID, Steam Input, touch, gyro, and controller lifecycle without logging raw input;
+- SteamOS update, slot, image, immutable-root, free-space, and previous-image health.
 
-Each remediation module follows a strict lifecycle:
+Future coverage should also add structured JSON output, battery trend baselines, performance timelines,
+firmware/recovery contrasts, and an upstream-ready issue packet built from the redacted bundle.
 
-```
-1. PRE_CHECK  — Verify the trigger condition still exists (race-safe)
-2. BACKUP     — Snapshot state before modification (if destructive)
-3. EXECUTE    — Perform the remediation action (with timeout guard)
-4. VERIFY     — Confirm the fix worked (re-check trigger condition)
-5. REPORT     — Log outcome: SUCCESS, FAILED, or PARTIAL
+## Remediation policy
+
+A fix is eligible only when DeckDoc has a current, model-compatible signature; a bounded reversible
+action; a backup where state changes; direct verification; and a documented rollback. Unsupported or
+ambiguous cases end in evidence and escalation.
+
+```text
+PRE_CHECK -> BACKUP -> EXECUTE -> VERIFY -> REPORT -> documented ROLLBACK
 ```
 
-Remediation modules never run automatically — they require `--fix` flag or explicit invocation.
+DeckDoc will not add generic driver unloads, blind GPU resets, automatic cache deletion, mounted
+filesystem repair, clock/voltage/power changes, firmware flashing, or automatic report upload as
+routine remedies. Advisory actions such as closing a memory-heavy process are described as advice,
+not disguised as remediation modules.
 
-## Permanent safety policy
+## Definition of a credible hardware decision
 
-- Never change panel voltage, brightness, display power, TDP, clocks, charging behavior, or firmware as a blackout experiment.
-- Never attempt a blind GPU/panel sysfs power cycle. Preserve evidence and prefer an orderly reboot when the GPU is genuinely wedged.
-- Keep display fixes in the compositor plane-selection layer when evidence shows valid rendered/captured frames but failed physical scanout.
-- Require exact device resolution and recoverable backups before filesystem or cache mutation.
-
-## Completed (v1.0.1)
-
-- gpu_apu.sh: dmesg → `journalctl -k -b 0 --priority=err`
-- gpu_apu.sh: Separate recoverable vs hard lock classification
-- storage_smart.sh: Add `sudo -n` fallback
-- fs_integrity.sh: Add `sudo -n` fallback
+DeckDoc may report a strong hardware suspicion when a repeatable failure persists across clean
+software/configuration tests, outside the installed OS or in firmware where applicable, and across
+known-good external parts. Confirmed hardware failure requires direct hardware/service evidence or a
+validated repair outcome. A timeout, core dump, persistent BTRFS counter, swap allocation, hot chassis,
+zero idle fan, or black screen alone is never confirmation.

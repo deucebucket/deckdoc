@@ -23,6 +23,7 @@ fi
 
 BOOT_START=$(uptime -s 2>/dev/null || true)
 ALL_DUMPS=$(coredumpctl list --no-legend --no-pager 2>/dev/null || true)
+LAST_24H_DUMPS=$(coredumpctl list --no-legend --no-pager --since "24 hours ago" 2>/dev/null || true)
 if [ -n "$BOOT_START" ]; then
     BOOT_DUMPS=$(coredumpctl list --no-legend --no-pager --since "$BOOT_START" 2>/dev/null || true)
 else
@@ -43,6 +44,18 @@ count_executable() {
         {
             for (i=1; i<=NF; i++) {
                 if ($i ~ /^SIG[A-Z0-9]+$/ && $(i+2) ~ wanted) count++
+            }
+        }
+        END { print count+0 }
+    '
+}
+
+count_signal_for_executable() {
+    local records="$1" pattern="$2" signal="$3"
+    printf '%s\n' "$records" | awk -v wanted="$pattern" -v wanted_signal="$signal" '
+        {
+            for (i=1; i<=NF; i++) {
+                if ($i == wanted_signal && $(i+2) ~ wanted) count++
             }
         }
         END { print count+0 }
@@ -79,6 +92,29 @@ if [ "$BOOT_DUMP_COUNT" -gt 0 ]; then
     printf '%s\n' "$BOOT_DUMPS" | tail -10
 else
     echo "  No core dumps in the current boot."
+fi
+sync
+
+echo "--- Crash activity in the last 24 hours ---"
+LAST_24H_COUNT=$(count_records "$LAST_24H_DUMPS")
+STEAMWEBHELPER_24H=$(count_executable "$LAST_24H_DUMPS" '/steamwebhelper$')
+GAMESCOPE_24H=$(count_executable "$LAST_24H_DUMPS" '/gamescope(-wl)?$')
+WINE_PROTON_24H=$(count_executable "$LAST_24H_DUMPS" '/(wine[^/]*|proton[^/]*)$')
+STEAMWEBHELPER_TRAPS_24H=$(count_signal_for_executable "$LAST_24H_DUMPS" '/steamwebhelper$' SIGTRAP)
+GAMESCOPE_ABORTS_24H=$(count_signal_for_executable "$LAST_24H_DUMPS" '/gamescope(-wl)?$' SIGABRT)
+GAMESCOPE_SEGV_24H=$(count_signal_for_executable "$LAST_24H_DUMPS" '/gamescope(-wl)?$' SIGSEGV)
+echo "  All crashes:             ${LAST_24H_COUNT}"
+echo "  steamwebhelper crashes:  ${STEAMWEBHELPER_24H} (${STEAMWEBHELPER_TRAPS_24H} SIGTRAP)"
+echo "  Gamescope crashes:       ${GAMESCOPE_24H} (${GAMESCOPE_ABORTS_24H} SIGABRT, ${GAMESCOPE_SEGV_24H} SIGSEGV)"
+echo "  Wine/Proton crashes:     ${WINE_PROTON_24H}"
+if [ "$LAST_24H_COUNT" -gt 10 ]; then
+    echo "  HIGH: More than 10 crashes were recorded in the last 24 hours."
+fi
+if [ "$STEAMWEBHELPER_TRAPS_24H" -gt 0 ]; then
+    echo "  NOTE: steamwebhelper SIGTRAP records need incident-time correlation; they are not equivalent to a compositor crash."
+fi
+if [ $((GAMESCOPE_ABORTS_24H + GAMESCOPE_SEGV_24H)) -gt 0 ]; then
+    echo "  HIGH: Gamescope SIGABRT/SIGSEGV records occurred in the last 24 hours."
 fi
 sync
 

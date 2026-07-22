@@ -32,7 +32,7 @@ fi
 DECKDOC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export DECKDOC_DIR
 MODULES_DIR="${DECKDOC_DIR}/modules"
-LOG_DIR="${DECKDOC_DIR}/logs"
+LOG_DIR="${DECKDOC_LOG_DIR:-${DECKDOC_DIR}/logs}"
 REPORT_FILE="${LOG_DIR}/deckdoc_master_report_$(date +%s).log"
 
 mkdir -p "${LOG_DIR}"
@@ -44,7 +44,7 @@ panic_sync() {
 trap panic_sync EXIT HUP INT QUIT TERM
 
 echo "========================================" > "${REPORT_FILE}"
-echo "DeckDoc v3.1.0 - Diagnostics + Safe Remediation" >> "${REPORT_FILE}"
+echo "DeckDoc v3.2.0 - Diagnostics + Safe Remediation" >> "${REPORT_FILE}"
 echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "${REPORT_FILE}"
 echo "Reported symptom: display-black=${DISPLAY_BLACK_REPORTED}" >> "${REPORT_FILE}"
 echo "========================================" >> "${REPORT_FILE}"
@@ -60,10 +60,12 @@ sync
 # Software/OS diagnostic modules (v2.0 / v3.0)
 "${MODULES_DIR}/audio_sof.sh" > "${LOG_DIR}/module_audio.log" 2>&1 &
 "${MODULES_DIR}/display_blackout.sh" > "${LOG_DIR}/module_display.log" 2>&1 &
+"${MODULES_DIR}/dock_usb_c.sh" > "${LOG_DIR}/module_dock.log" 2>&1 &
 "${MODULES_DIR}/coredump_analysis.sh" > "${LOG_DIR}/module_coredump.log" 2>&1 &
 "${MODULES_DIR}/wifi_firmware.sh" > "${LOG_DIR}/module_wifi.log" 2>&1 &
 "${MODULES_DIR}/gamescope_session.sh" > "${LOG_DIR}/module_gamescope.log" 2>&1 &
 "${MODULES_DIR}/memory_swap.sh" > "${LOG_DIR}/module_memory.log" 2>&1 &
+"${MODULES_DIR}/probe_incidents.sh" > "${LOG_DIR}/module_probe.log" 2>&1 &
 "${MODULES_DIR}/steam_client_logs.sh" > "${LOG_DIR}/module_steam.log" 2>&1 &
 "${MODULES_DIR}/mmc_sd_card.sh" > "${LOG_DIR}/module_mmc.log" 2>&1 &
 "${MODULES_DIR}/acpi_pm_state.sh" > "${LOG_DIR}/module_acpi.log" 2>&1 &

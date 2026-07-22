@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# This file is installed root-owned. Keep every accepted operation argument-free
+# and read-only; sudoers grants access to the exact command lines below.
+readonly INSTALL_ROOT="/var/lib/deckdoc-authorized"
+readonly APP_DIR="${INSTALL_ROOT}/app"
+readonly PROBE_BIN="/var/lib/deckdoc-probe/bin/deckdoc-probe.sh"
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin"
+unset BASH_ENV ENV CDPATH GLOBIGNORE DECKDOC_DIR DECKDOC_LOG_DIR
+umask 077
+
+usage() {
+    echo "Usage: deckdoc-authorized {report|report-display-black|probe-capture|probe-status|version}" >&2
+    exit 2
+}
+
+verify_snapshot() {
+    if [ ! -r "${INSTALL_ROOT}/MANIFEST.sha256" ]; then
+        echo "DeckDoc authorized snapshot has no integrity manifest; reinstall authorization." >&2
+        exit 1
+    fi
+    if ! (cd "$INSTALL_ROOT" && sha256sum -c --status MANIFEST.sha256); then
+        echo "DeckDoc authorized snapshot failed its integrity check; reinstall authorization." >&2
+        exit 1
+    fi
+}
+
+emit_report() {
+    local symptom_arg="${1:-}"
+    local run_dir
+    run_dir=$(mktemp -d "${INSTALL_ROOT}/run.XXXXXXXX")
+    cleanup_run() {
+        case "$run_dir" in
+            "${INSTALL_ROOT}"/run.*) rm -rf -- "$run_dir" ;;
+        esac
+    }
+    trap cleanup_run EXIT HUP INT TERM
+
+    if [ -n "$symptom_arg" ]; then
+        env -i PATH="$PATH" DECKDOC_LOG_DIR="$run_dir" \
+            /usr/bin/bash "${APP_DIR}/deckdoc.sh" "$symptom_arg" >/dev/null
+    else
+        env -i PATH="$PATH" DECKDOC_LOG_DIR="$run_dir" \
+            /usr/bin/bash "${APP_DIR}/deckdoc.sh" >/dev/null
+    fi
+
+    local report
+    report=$(find "$run_dir" -maxdepth 1 -type f -name 'deckdoc_master_report_*.log' -print -quit)
+    if [ -z "$report" ] || [ ! -r "$report" ]; then
+        echo "DeckDoc did not produce a report." >&2
+        exit 1
+    fi
+    cat -- "$report"
+}
+
+case "${1:-}" in
+    report)
+        [ "$#" -eq 1 ] || usage
+        verify_snapshot
+        emit_report
+        ;;
+    report-display-black)
+        [ "$#" -eq 1 ] || usage
+        verify_snapshot
+        emit_report --display-black
+        ;;
+    probe-capture)
+        [ "$#" -eq 1 ] || usage
+        if [ ! -x "$PROBE_BIN" ]; then
+            echo "The opt-in DeckDoc probe is not installed." >&2
+            exit 1
+        fi
+        "$PROBE_BIN" capture authorized-manual
+        ;;
+    probe-status)
+        [ "$#" -eq 1 ] || usage
+        systemctl is-active deckdoc-probe.service
+        ;;
+    version)
+        [ "$#" -eq 1 ] || usage
+        cat "${INSTALL_ROOT}/VERSION"
+        ;;
+    *) usage ;;
+esac

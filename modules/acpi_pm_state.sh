@@ -4,6 +4,9 @@ set -uo pipefail
 echo "[MODULE: ACPI Sleep/Wake (PM State)]"
 sync
 
+HWMON_DIR="${DECKDOC_HWMON_DIR:-/sys/class/hwmon}"
+POWER_SUPPLY_ROOT="${DECKDOC_POWER_SUPPLY_ROOT:-/sys/class/power_supply}"
+
 echo "--- Suspend/resume transitions (current boot) ---"
 SUSPEND_COUNT=0
 RESUME_COUNT=0
@@ -62,13 +65,47 @@ if command -v journalctl >/dev/null 2>&1; then
 fi
 sync
 
-echo "--- Battery charge limit interaction ---"
-BAT_DIR="/sys/class/power_supply/BAT1"
-if [ ! -d "$BAT_DIR" ]; then
-    BAT_DIR="/sys/class/power_supply/BAT0"
+echo "--- Live fan/temperature cross-check ---"
+LIVE_FAN_ZERO=false
+MAX_TEMP_RAW=0
+FAN_INPUTS=0
+for fan in "${HWMON_DIR}"/hwmon*/fan*_input; do
+    [ -r "$fan" ] || continue
+    FAN_INPUTS=$((FAN_INPUTS + 1))
+    rpm=$(cat "$fan" 2>/dev/null || echo unknown)
+    echo "  ${fan}: ${rpm} RPM"
+    if [ "$rpm" = "0" ]; then LIVE_FAN_ZERO=true; fi
+done
+for temp in "${HWMON_DIR}"/hwmon*/temp*_input; do
+    [ -r "$temp" ] || continue
+    raw=$(cat "$temp" 2>/dev/null || echo 0)
+    case "$raw" in ''|*[!0-9]*) raw=0 ;; esac
+    if [ "$raw" -gt "$MAX_TEMP_RAW" ]; then MAX_TEMP_RAW="$raw"; fi
+done
+if [ "$FAN_INPUTS" -eq 0 ]; then
+    echo "  No live fan RPM input exported."
+elif [ "$LIVE_FAN_ZERO" = "true" ] && [ "$SUSPEND_COUNT" -gt 0 ] && [ "$MAX_TEMP_RAW" -ge 70000 ]; then
+    echo "  RESUME_SIGNATURE: LIVE_ZERO_RPM_WITH_HOT_SENSOR_AFTER_SUSPEND"
+    echo "  HIGH: A fan input is 0 RPM while a sensor is at least 70 C after a suspend in this boot. Stop load and verify fan-controller state."
+elif [ "$LIVE_FAN_ZERO" = "true" ] && [ "$SUSPEND_COUNT" -gt 0 ]; then
+    echo "  NOTE: A fan input is 0 RPM after a suspend in this boot, but no sensor is currently at least 70 C. Timing and fan-stop policy require correlation."
+else
+    echo "  No live hot-sensor/zero-RPM resume signature."
 fi
-if [ -f "${BAT_DIR}/charge_control_limit" ]; then
-    echo "  Battery charge limit is set (may interact with PM resume bug #2475)."
+sync
+
+echo "--- Battery charge limit interaction ---"
+BAT_DIR="${POWER_SUPPLY_ROOT}/BAT1"
+if [ ! -d "$BAT_DIR" ]; then
+    BAT_DIR="${POWER_SUPPLY_ROOT}/BAT0"
+fi
+CHARGE_LIMIT_FILE=""
+for candidate in "${BAT_DIR}/charge_control_limit" "${BAT_DIR}/charge_control_end_threshold"; do
+    if [ -r "$candidate" ]; then CHARGE_LIMIT_FILE="$candidate"; break; fi
+done
+if [ -n "$CHARGE_LIMIT_FILE" ]; then
+    echo "  Battery charge-limit control: ${CHARGE_LIMIT_FILE}=$(cat "$CHARGE_LIMIT_FILE" 2>/dev/null || echo unreadable)"
+    echo "  NOTE: Compare the configured limit and charging state with the suspend window before applying issue #2475."
 else
     echo "  No battery charge limit configured."
 fi

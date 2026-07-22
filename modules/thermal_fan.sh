@@ -25,6 +25,16 @@ if [ -d "$HWMON_DIR" ]; then
                     max_raw=""; crit_raw=""
                     [ -r "$max_file" ] && max_raw=$(cat "$max_file")
                     [ -r "$crit_file" ] && crit_raw=$(cat "$crit_file")
+                    case "$max_raw" in ''|*[!0-9]*) max_raw="" ;; esac
+                    case "$crit_raw" in ''|*[!0-9]*) crit_raw="" ;; esac
+                    if [ -n "$max_raw" ] && [ "$max_raw" -gt 200000 ]; then
+                        echo "  NOTE: Ignoring implausible exported high threshold ${max_raw} millidegrees C."
+                        max_raw=""
+                    fi
+                    if [ -n "$crit_raw" ] && [ "$crit_raw" -gt 200000 ]; then
+                        echo "  NOTE: Ignoring implausible exported critical threshold ${crit_raw} millidegrees C."
+                        crit_raw=""
+                    fi
                     if [ -n "$max_raw" ]; then echo "  High threshold: $(awk "BEGIN {print $max_raw/1000}") C"; fi
                     if [ -n "$crit_raw" ]; then echo "  Critical threshold: $(awk "BEGIN {print $crit_raw/1000}") C"; fi
                     # A hard-coded 90 C is not a hardware trip point. Compare to

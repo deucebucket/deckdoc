@@ -1,0 +1,29 @@
+[Unit]
+Description=DeckDoc lightweight incident probe
+Documentation=https://github.com/deucebucket/deckdoc/wiki/Continuous-Incident-Probe
+After=systemd-journald.service
+
+[Service]
+Type=simple
+ExecStart=/var/lib/deckdoc-probe/bin/deckdoc-probe.sh watch
+EnvironmentFile=-/etc/deckdoc-probe.conf
+Restart=on-failure
+RestartSec=5s
+Nice=10
+IOSchedulingClass=idle
+CPUWeight=10
+IOWeight=10
+MemoryMax=128M
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadWritePaths=/var/lib/deckdoc-probe
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
