@@ -7,7 +7,7 @@ readonly INSTALL_ROOT="/var/lib/deckdoc-authorized"
 readonly APP_DIR="${INSTALL_ROOT}/app"
 readonly BIN_DIR="${INSTALL_ROOT}/bin"
 readonly BROKER="${BIN_DIR}/deckdoc-authorized"
-readonly VERSION="3.2.0"
+readonly VERSION="$(<"${SOURCE_DIR}/VERSION")"
 
 require_root() {
     if [ "$(id -u)" -ne 0 ]; then

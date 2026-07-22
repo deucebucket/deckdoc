@@ -1,4 +1,4 @@
-# DeckDoc v3.2 roadmap — full-system diagnostics and incident response
+# DeckDoc v3.3.0 roadmap — full-system diagnostics and incident response
 
 DeckDoc's product is evidence, correlation, and safe decision support. It should help a user separate
 application/configuration faults, SteamOS/driver faults, accessory or dock faults, and strong hardware
@@ -13,7 +13,7 @@ narrow and is not the measure of project coverage.
 | Incident probe | Opt-in bounded event capture prototype; private, resource-limited, no remediation |
 | Dock analysis | USB/Type-C/PD/Alt Mode/display/Ethernet evidence and current-boot path-error correlation |
 | DeckDoc Rescue | Read-only collector plus unsigned ArchISO alpha builder for outside-OS comparison |
-| DeckMD | Static local-only symptom checker with progressive questions and ranked diagnostic branches |
+| DeckMD | Public, static, local-only checker with six guided categories, contradiction pruning, 128 facts, and 15 ranked branches |
 | Diagnostic wiki | Symptom routes, evidence interpretation, safe contrasts, recovery, and hardware decisions |
 | Privileged collection | One-time approved, exact-command, root-owned diagnostic broker prototype |
 | Remediation | Two guarded signature-specific paths: SOF reload and Gamescope forced-composition test |
@@ -45,8 +45,8 @@ redacted bundles without automatic upload.
   third-party paths and generate direct-vs-dock differential summaries.
 - [#19 Privileged authorization](https://github.com/deucebucket/deckdoc/issues/19): adversarially
   review the allowlist, snapshot integrity, output path, environment, and revocation flow.
-- [#23 DeckMD](https://github.com/deucebucket/deckdoc/issues/23): deploy Pages, share a versioned
-  vocabulary, expand rules, and complete keyboard/touch/responsive/accessibility validation.
+- [#23 DeckMD](https://github.com/deucebucket/deckdoc/issues/23): keep the launched Pages app aligned
+  with CLI/wiki vocabulary, validate on physical Deck hardware, and complete a formal accessibility audit.
 
 ## P2 — close broad subsystem gaps
 
