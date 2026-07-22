@@ -1,0 +1,6 @@
+# Syntax fixture only. The installer replaces the user with the approving account.
+deckdoc_test ALL=(root) NOPASSWD: NOSETENV: /var/lib/deckdoc-authorized/bin/deckdoc-authorized report
+deckdoc_test ALL=(root) NOPASSWD: NOSETENV: /var/lib/deckdoc-authorized/bin/deckdoc-authorized report-display-black
+deckdoc_test ALL=(root) NOPASSWD: NOSETENV: /var/lib/deckdoc-authorized/bin/deckdoc-authorized probe-capture
+deckdoc_test ALL=(root) NOPASSWD: NOSETENV: /var/lib/deckdoc-authorized/bin/deckdoc-authorized probe-status
+deckdoc_test ALL=(root) NOPASSWD: NOSETENV: /var/lib/deckdoc-authorized/bin/deckdoc-authorized version

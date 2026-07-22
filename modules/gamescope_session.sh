@@ -49,21 +49,33 @@ if command -v journalctl >/dev/null 2>&1; then
     if [ -z "$SESSION_LOG" ]; then
         SESSION_LOG=$(run_user journalctl --user -b 0 -u gamescope-session.service --priority=err -n 30 2>/dev/null)
     fi
-    if [ -n "$SESSION_LOG" ]; then
-        echo "$SESSION_LOG" | grep -iE 'error|warn|fail|core dump|terminate|abort' | head -10 || true
+    SESSION_MATCHES=$(printf '%s\n' "$SESSION_LOG" | grep -iE 'error|warn|fail|core dump|terminate|abort' | head -10 || true)
+    if [ -n "$SESSION_MATCHES" ]; then
+        echo "$SESSION_MATCHES"
     else
         echo "  No gamescope session errors in current boot."
     fi
 
     sync
     echo "--- Session restart count ---"
-    SESSION_STARTS=$(journalctl -b 0 -u gamescope-session 2>/dev/null | grep -c 'Started Gamescope' || true)
-    if [ -z "$SESSION_STARTS" ] || [ "$SESSION_STARTS" -eq 0 ]; then
-        SESSION_STARTS=$(run_user journalctl --user -b 0 -u gamescope-session.service 2>/dev/null | grep -c 'Started Gamescope Session' || true)
+    ACTIVE_STATE=$(run_user systemctl --user show gamescope-session.service --property=ActiveState --value 2>/dev/null || true)
+    SYSTEMD_RESTARTS=$(run_user systemctl --user show gamescope-session.service --property=NRestarts --value 2>/dev/null || true)
+    SESSION_SOURCE="journal"
+    case "$SYSTEMD_RESTARTS" in ''|*[!0-9]*) SYSTEMD_RESTARTS="" ;; esac
+    if [ -n "$SYSTEMD_RESTARTS" ] && [ "$ACTIVE_STATE" = "active" ]; then
+        SESSION_STARTS=$((SYSTEMD_RESTARTS + 1))
+        SESSION_SOURCE="systemd NRestarts + active invocation"
+    else
+        SESSION_STARTS=$(journalctl -b 0 -u gamescope-session 2>/dev/null | grep -c 'Started Gamescope' || true)
+        if [ -z "$SESSION_STARTS" ] || [ "$SESSION_STARTS" -eq 0 ]; then
+            SESSION_STARTS=$(run_user journalctl --user -b 0 -u gamescope-session.service 2>/dev/null | grep -c 'Started Gamescope Session' || true)
+        fi
     fi
     RESTART_COUNT="${SESSION_STARTS:-0}"
-    echo "  Gamescope session starts: ${RESTART_COUNT} (1 = normal, >1 indicates restarts)"
-    if [ "${RESTART_COUNT:-0}" -gt 1 ]; then
+    echo "  Gamescope session starts: ${RESTART_COUNT} (source: ${SESSION_SOURCE}; 1 = normal)"
+    if [ "${RESTART_COUNT:-0}" -gt 3 ]; then
+        echo "  CRITICAL: Gamescope session started ${RESTART_COUNT} times in one boot. Repeated compositor instability."
+    elif [ "${RESTART_COUNT:-0}" -gt 1 ]; then
         echo "  WARNING: Gamescope session restarted ${RESTART_COUNT} times. Possible compositor instability."
     fi
 fi

@@ -33,6 +33,27 @@ else
 fi
 sync
 
+
+echo "--- steamwebhelper crash frequency ---"
+if command -v coredumpctl >/dev/null 2>&1; then
+    BOOT_START=$(uptime -s 2>/dev/null || true)
+    STEAMWEBHELPER_24H=$(coredumpctl list --no-legend --no-pager --since "24 hours ago" 2>/dev/null | grep -ic '/steamwebhelper' || true)
+    STEAMWEBHELPER_BOOT=0
+    if [ -n "$BOOT_START" ]; then
+        STEAMWEBHELPER_BOOT=$(coredumpctl list --no-legend --no-pager --since "$BOOT_START" 2>/dev/null | grep -ic '/steamwebhelper' || true)
+    fi
+    echo "  Current-boot steamwebhelper dumps: ${STEAMWEBHELPER_BOOT}"
+    echo "  Last-24h steamwebhelper dumps:    ${STEAMWEBHELPER_24H}"
+    if [ "$STEAMWEBHELPER_BOOT" -gt 5 ] || [ "$STEAMWEBHELPER_24H" -gt 10 ]; then
+        echo "  HIGH: Repeated steamwebhelper crashes exceed the diagnostic threshold."
+    elif [ "$STEAMWEBHELPER_BOOT" -gt 0 ]; then
+        echo "  NOTE: Correlate steamwebhelper dumps with visible Steam UI/session symptoms."
+    fi
+else
+    echo "  coredumpctl not available."
+fi
+sync
+
 echo "--- Steam stdout log ---"
 STDOUT_LOG="${DUMP_DIR}/steam_stdout.txt"
 if [ -f "$STDOUT_LOG" ]; then
@@ -66,7 +87,7 @@ if [ "${DECKDOC_SKIP_JOURNAL:-0}" != "1" ] && command -v journalctl >/dev/null 2
 fi
 sync
 
-echo "--- Proton prefix corruption check ---"
+echo "--- Proton prefix inventory ---"
 if command -v find >/dev/null 2>&1; then
     # A root DeckDoc run must still inspect the active Deck user's Steam tree,
     # not /root, or a healthy install is falsely reported as missing.
@@ -74,7 +95,7 @@ if command -v find >/dev/null 2>&1; then
     if [ -d "$STEAM_DIR" ]; then
         BROKEN_PREFIXES=$(find "$STEAM_DIR" -name 'drive_c' -prune -o -name '*.lock' -print 2>/dev/null | wc -l)
         echo "  Proton prefixes: $(ls -d "$STEAM_DIR"/*/ 2>/dev/null | wc -l) total"
-        echo "  Lock/stall files: ${BROKEN_PREFIXES}"
+        echo "  Lock files:      ${BROKEN_PREFIXES} (inventory only; presence does not prove a stalled or corrupt prefix)"
     else
         echo "  Proton compatdata directory not found at ${STEAM_DIR}."
     fi

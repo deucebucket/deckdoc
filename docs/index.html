@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DeckMD by DeckDoc: a private, evidence-first Steam Deck symptom checker.">
+  <meta name="theme-color" content="#0b0d0f">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>DeckMD — Steam Deck symptom checker by DeckDoc</title>
+  <link rel="stylesheet" href="./assets/styles.css">
+  <script defer src="./assets/questionnaire.js"></script>
+  <script defer src="./assets/knowledge.js"></script>
+  <script defer src="./assets/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#checker">Skip to symptom checker</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="DeckMD home">
+      <span class="brand-mark" aria-hidden="true">D+</span>
+      <span><strong>DeckMD</strong><small>by DeckDoc</small></span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="https://github.com/deucebucket/deckdoc/wiki">Diagnostic wiki</a>
+      <a href="https://github.com/deucebucket/deckdoc">GitHub</a>
+      <a class="nav-cta" href="#checker">Start triage</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="overline">Steam Deck symptom intelligence · runs entirely in your browser</p>
+        <h1 id="hero-title">Don’t guess the fix.<br><em>Narrow the failure.</em></h1>
+        <p class="hero-lede">A symptom can cross six layers before it reaches your screen. Check what
+          happened, what survived, and when it changed. DeckMD ranks the next diagnostic branch and
+          shows the evidence needed to confirm it.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#checker">Open the full checklist</a>
+          <a class="button ghost" href="https://github.com/deucebucket/deckdoc/wiki/Hardware-Failure-Decision-Guide">How hardware is decided</a>
+        </div>
+        <ul class="trust-row" aria-label="Privacy and safety commitments">
+          <li>No uploads</li><li>No analytics</li><li>No account</li><li>No automatic fixes</li>
+        </ul>
+      </div>
+      <div class="hero-instrument" aria-label="Diagnostic layers illustration">
+        <div class="instrument-head"><span>PATH TRACE</span><span class="live-dot">LOCAL</span></div>
+        <div class="trace-line"><span>01</span><b>SYMPTOM</b><i></i><small>what you see</small></div>
+        <div class="trace-line"><span>02</span><b>TRANSITION</b><i></i><small>what changed</small></div>
+        <div class="trace-line"><span>03</span><b>SURVIVORS</b><i></i><small>what still works</small></div>
+        <div class="trace-line"><span>04</span><b>EVIDENCE</b><i></i><small>what the Deck logged</small></div>
+        <div class="instrument-callout"><span>Result</span><strong>app → OS → path → hardware</strong></div>
+      </div>
+    </section>
+
+    <section class="checker-shell" id="checker" aria-labelledby="checker-title">
+      <div class="checker-topbar">
+        <div>
+          <p class="overline">Interactive triage matrix</p>
+          <h2 id="checker-title">Build the incident fingerprint</h2>
+        </div>
+        <div class="progress-block">
+          <span><b id="answered-count">0</b> of <b id="group-count">8</b> sections touched</span>
+          <div class="progress-track" aria-hidden="true"><i id="progress-bar"></i></div>
+        </div>
+      </div>
+
+      <div class="safety-banner" id="safety-banner" role="alert" hidden>
+        <div><span class="safety-icon" aria-hidden="true">!</span></div>
+        <div><strong>Stop software troubleshooting.</strong><p id="safety-copy"></p></div>
+      </div>
+
+      <section class="suggestion-panel" aria-labelledby="suggestion-title">
+        <div class="suggestion-heading">
+          <div><p class="overline">Adaptive follow-up</p><h3 id="suggestion-title">Next best checks</h3></div>
+          <p id="suggestion-explainer">Choose a primary symptom and DeckMD will offer the answers that split its major branches.</p>
+        </div>
+        <div class="suggestion-rail" id="suggestion-rail" aria-live="polite"></div>
+      </section>
+
+      <div class="checker-tools">
+        <label class="search-box" for="option-search"><span aria-hidden="true">⌕</span>
+          <input id="option-search" type="search" placeholder="Find a checklist item…" autocomplete="off">
+        </label>
+        <button class="text-button" id="expand-all" type="button">Expand all sections</button>
+        <button class="text-button danger-text" id="reset-all" type="button">Reset</button>
+      </div>
+
+      <div class="question-stack" id="question-stack"></div>
+
+      <section class="results" id="results" aria-labelledby="results-title">
+        <div class="results-header">
+          <div><p class="overline">Live interpretation</p><h2 id="results-title">What your answers point toward</h2></div>
+          <div class="result-actions">
+            <button class="button small ghost" id="copy-summary" type="button">Copy case summary</button>
+            <button class="button small ghost" id="copy-link" type="button">Copy shareable selections</button>
+          </div>
+        </div>
+
+        <div class="os-warning" id="os-warning" hidden>
+          <strong>Windows path selected.</strong> SteamOS journal, Gamescope, SOF, and DeckDoc remediation
+          commands do not automatically apply. The physical symptom comparisons still help.
+        </div>
+
+        <div class="result-grid">
+          <aside class="constellation" aria-labelledby="constellation-title">
+            <p class="overline">Signal constellation</p>
+            <h3 id="constellation-title">Current layer weight</h3>
+            <div class="orbit" aria-hidden="true">
+              <i class="orbit-ring one"></i><i class="orbit-ring two"></i>
+              <div class="signal-node app" id="node-app"><span>APP</span></div>
+              <div class="signal-node os" id="node-os"><span>OS</span></div>
+              <div class="signal-node path" id="node-path"><span>PATH</span></div>
+              <div class="signal-node hardware" id="node-hardware"><span>HW</span></div>
+              <div class="orbit-core">?</div>
+            </div>
+            <div class="layer-legend" id="layer-legend"></div>
+            <p class="constellation-note">Weight is a triage priority, not probability or diagnosis.</p>
+          </aside>
+          <div class="ranked-results" id="ranked-results" aria-live="polite"></div>
+        </div>
+
+        <details class="case-digest" id="case-digest">
+          <summary>Your selected incident facts <span id="selection-count">0 selected</span></summary>
+          <div id="selected-facts"></div>
+        </details>
+      </section>
+    </section>
+
+    <section class="method-strip">
+      <div><span>01</span><strong>Observe</strong><p>Describe physical behavior before naming a cause.</p></div>
+      <div><span>02</span><strong>Correlate</strong><p>Align the symptom with the same boot and timestamp.</p></div>
+      <div><span>03</span><strong>Contrast</strong><p>Change one model, path, version, or peripheral at a time.</p></div>
+      <div><span>04</span><strong>Verify</strong><p>Re-run evidence and physically confirm the outcome.</p></div>
+    </section>
+  </main>
+
+  <footer>
+    <div><strong>DeckMD</strong><p>An evidence-first interface for the open DeckDoc toolkit.</p></div>
+    <p>This is not medical advice, despite the name. It is also not Valve, Steam Support, a warranty
+      verdict, or electrical test equipment.</p>
+    <div class="footer-links"><a href="https://github.com/deucebucket/deckdoc/wiki">Wiki</a><a href="https://github.com/deucebucket/deckdoc/wiki/Recovery-and-Escalation">Escalation</a><a href="https://github.com/deucebucket/deckdoc/issues">Report a gap</a></div>
+  </footer>
+  <noscript><div class="noscript">DeckMD needs JavaScript for local scoring. No data is sent anywhere.</div></noscript>
+</body>
+</html>

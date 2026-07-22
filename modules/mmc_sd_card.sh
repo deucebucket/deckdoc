@@ -4,6 +4,8 @@ set -uo pipefail
 echo "[MODULE: SD Card / mmc Storage]"
 sync
 
+SYS_ROOT="${DECKDOC_SYS_ROOT:-/sys}"
+
 echo "--- mmc device detection ---"
 if command -v lsblk >/dev/null 2>&1; then
     MMC_DEVICES=$(lsblk -dno NAME,TYPE,TRAN 2>/dev/null | grep -i mmc || true)
@@ -14,10 +16,12 @@ if command -v lsblk >/dev/null 2>&1; then
         echo "  No mmc devices detected."
     fi
 
-    MMC_MOUNTS=$(findmnt -lo SOURCE,TARGET,FSTYPE,SIZE 2>/dev/null | grep mmc || true)
-    if [ -n "$MMC_MOUNTS" ]; then
-        echo "  Mounted mmc partitions:"
-        echo "$MMC_MOUNTS"
+    if command -v findmnt >/dev/null 2>&1; then
+        MMC_MOUNTS=$(findmnt -lo SOURCE,TARGET,FSTYPE,SIZE 2>/dev/null | grep mmc || true)
+        if [ -n "$MMC_MOUNTS" ]; then
+            echo "  Mounted mmc partitions:"
+            echo "$MMC_MOUNTS"
+        fi
     fi
 else
     echo "  lsblk not available."
@@ -28,7 +32,7 @@ echo "--- mmc driver errors (dmesg) ---"
 if command -v dmesg >/dev/null 2>&1; then
     MMC_ERRORS=$(dmesg 2>/dev/null | grep -iE 'mmc[0-9]:|sdhci|card reader' | grep -iE 'error|fail|timeout|cannot verify|corrupt' | head -10 || true)
     if [ -n "$MMC_ERRORS" ]; then
-        echo "  CRITICAL: mmc driver errors detected:"
+        echo "  HIGH: mmc driver errors detected:"
         echo "$MMC_ERRORS"
     else
         echo "  No mmc driver errors in dmesg."
@@ -46,7 +50,7 @@ echo "--- SD card TRIM status ---"
 if command -v journalctl >/dev/null 2>&1; then
     TRIM_ERRORS=$(journalctl -b 0 2>/dev/null | grep -iE 'fstrim|trim.*mmc|mmc.*trim|safe_trim' | grep -iE 'error|fail|unsupported' | head -5 || true)
     if [ -n "$TRIM_ERRORS" ]; then
-        echo "  TRIM errors on mmc/SD:"
+        echo "  MEDIUM: TRIM errors on mmc/SD:"
         echo "$TRIM_ERRORS"
     else
         echo "  No TRIM errors for mmc devices in current boot."
@@ -55,8 +59,8 @@ fi
 sync
 
 echo "--- SD card health indicators ---"
-if [ -d /sys/block ] && command -v ls >/dev/null 2>&1; then
-    for mmc in /sys/block/mmcblk*; do
+if [ -d "${SYS_ROOT}/block" ] && command -v ls >/dev/null 2>&1; then
+    for mmc in "${SYS_ROOT}"/block/mmcblk*; do
         if [ -d "$mmc" ]; then
             DEV=$(basename "$mmc")
             SIZE=$(cat "${mmc}/size" 2>/dev/null || echo 0)
