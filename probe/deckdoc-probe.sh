@@ -3,6 +3,17 @@ set -uo pipefail
 
 umask 077
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -x "${SCRIPT_DIR}/deckdoc-redact.sh" ]; then
+    REDACTOR="${SCRIPT_DIR}/deckdoc-redact.sh"
+else
+    REDACTOR="${SCRIPT_DIR}/../lib/deckdoc-redact.sh"
+fi
+if [ ! -x "$REDACTOR" ]; then
+    echo "DeckDoc public-safe output filter is missing; refusing capture." >&2
+    exit 1
+fi
+
 if [ "$(id -u)" -eq 0 ]; then
     DEFAULT_STATE_DIR="/var/lib/deckdoc-probe"
 else
@@ -132,17 +143,18 @@ capture_state() {
             echo "net=$(basename "$iface") state=$(cat "${iface}/operstate" 2>/dev/null || echo inaccessible)"
         done
         command -v lsusb >/dev/null 2>&1 && lsusb -t 2>/dev/null || true
-        command -v lsblk >/dev/null 2>&1 && lsblk -o NAME,TYPE,TRAN,SIZE,RO,FSTYPE,MOUNTPOINTS 2>/dev/null || true
+        command -v lsblk >/dev/null 2>&1 && lsblk -o NAME,TYPE,TRAN,SIZE,RO,FSTYPE 2>/dev/null || true
 
         echo "--- active session services ---"
         run_session_user systemctl --user show gamescope-session.service gamescope-mangoapp.service \
             --property=Id,ActiveState,SubState,NRestarts 2>/dev/null || echo "session service state inaccessible"
 
-        echo "--- recent core metadata ---"
+        echo "--- recent core count ---"
         if command -v coredumpctl >/dev/null 2>&1; then
-            coredumpctl list --no-legend --no-pager --since "${PRE_SECONDS} seconds ago" 2>/dev/null | tail -30 || true
+            core_count=$(coredumpctl list --no-legend --no-pager --since "${PRE_SECONDS} seconds ago" 2>/dev/null | wc -l)
+            echo "recent_coredumps=${core_count}"
         fi
-    } > "$output" 2>&1
+    } 2>&1 | "$REDACTOR" > "$output"
 }
 
 prune_events() {
@@ -180,9 +192,9 @@ capture_event() {
         echo "boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo inaccessible)"
         echo "window_seconds_before=${PRE_SECONDS}"
         echo "window_seconds_after=${POST_SECONDS}"
-        echo "capture_scope=local-private-unredacted"
-    } > "${temp_dir}/metadata.txt"
-    printf '%s\n' "$trigger" > "${temp_dir}/trigger.log"
+        echo "capture_scope=local-public-safe-filtered"
+    } | "$REDACTOR" > "${temp_dir}/metadata.txt"
+    printf '%s\n' "$trigger" | "$REDACTOR" > "${temp_dir}/trigger.log"
     capture_state "${temp_dir}/state.log"
 
     if [ "$POST_SECONDS" -gt 0 ]; then sleep "$POST_SECONDS"; fi
@@ -191,7 +203,7 @@ capture_event() {
     journal_limit=$((MAX_EVENT_KIB * 1024))
     if command -v journalctl >/dev/null 2>&1; then
         journalctl --since "@${start_epoch}" --until "@${end_epoch}" -o short-iso-precise --no-pager 2>/dev/null \
-            | tail -c "$journal_limit" > "${temp_dir}/journal.log" || true
+            | tail -c "$journal_limit" | "$REDACTOR" > "${temp_dir}/journal.log" || true
     else
         echo "journalctl unavailable" > "${temp_dir}/journal.log"
     fi
@@ -216,7 +228,8 @@ watch_journal() {
         echo "Another DeckDoc probe is already watching ${STATE_DIR}." >&2
         exit 1
     fi
-    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) probe_started boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo inaccessible)" >> "${STATE_DIR}/probe.log"
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) probe_started boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo inaccessible)" \
+        | "$REDACTOR" >> "${STATE_DIR}/probe.log"
     chmod 600 "${STATE_DIR}/probe.log" 2>/dev/null || true
 
     journalctl --follow --since now -o short-iso-precise --no-pager 2>/dev/null | while IFS= read -r line; do
@@ -259,13 +272,14 @@ Commands:
   status                Show private state location and retained incident count
   latest                Print the latest incident directory
 
-The probe is read-only toward system state. Captures are private but unredacted; review before sharing.
+The probe is read-only toward system state. Captures are public-safe filtered before being written.
+Review every report before sharing because arbitrary upstream log formats can change.
 EOF
 }
 
 case "${1:-}" in
     watch) watch_journal ;;
-    capture) capture_event manual "${2:-manual capture}" "$(date +%s)" ;;
+    capture) capture_event manual "manual capture" "$(date +%s)" ;;
     classify)
         classify_line "${2:-}"
         if [ -n "$CATEGORY" ]; then echo "$CATEGORY"; else echo "unmatched"; fi

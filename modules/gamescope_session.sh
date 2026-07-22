@@ -31,7 +31,7 @@ if command -v coredumpctl >/dev/null 2>&1; then
     echo "  Historical MangoApp crashes:    ${HISTORICAL_MANGOAPP_COUNT}"
     echo "  Current-boot Gamescope crashes: ${CURRENT_GAMESCOPE_COUNT}"
     echo "  Current-boot MangoApp crashes:  ${CURRENT_MANGOAPP_COUNT}"
-    if [ -n "$CURRENT_DUMPS" ]; then printf '%s\n' "$CURRENT_DUMPS" | tail -10; fi
+    if [ -n "$CURRENT_DUMPS" ]; then echo "  Raw coredump rows are omitted; fixed Gamescope/MangoApp counts are retained."; fi
     if [ "${CURRENT_GAMESCOPE_COUNT:-0}" -gt 0 ]; then
         echo "  CRITICAL: Gamescope itself crashed in the current boot."
     fi

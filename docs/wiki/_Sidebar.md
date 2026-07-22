@@ -11,6 +11,7 @@
 ### Problems
 
 - [Crashes, GPU and memory](Crashes-GPU-and-Memory)
+- [Applications and RyuDeck](Application-Diagnostics)
 - [Audio](Audio-Problems)
 - [Network and resume](Network-and-Resume-Problems)
 - [Power, thermal and battery](Power-Thermal-and-Battery-Problems)

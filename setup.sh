@@ -12,6 +12,7 @@ chmod 755 "${DECKDOC_DIR}"/tests/*.sh
 chmod 755 "${DECKDOC_DIR}"/probe/*.sh
 chmod 755 "${DECKDOC_DIR}"/bootprobe/*.sh
 chmod 755 "${DECKDOC_DIR}"/privileged/*
+chmod 755 "${DECKDOC_DIR}"/lib/*.sh
 
 echo "[*] DeckDoc v${DECKDOC_VERSION} environment scaffolded successfully at ${DECKDOC_DIR}"
 sync

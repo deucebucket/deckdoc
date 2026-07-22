@@ -42,7 +42,8 @@ these exact client actions, but the authorization is not a general delegation of
 - A Git pull does not silently change the privileged snapshot.
 - Updating that snapshot requires running the interactive install command again.
 - Remediation remains outside the passwordless allowlist and requires a separate explicit action.
-- Reports are private but unredacted. Review them before sharing.
+- Reports use the same public-safe pre-write filter as a normal run and retain no raw variant. Review
+  them before sharing because upstream formats can change.
 
 If the integrity check fails, the broker refuses to run and asks for reinstallation. This detects a
 changed or incomplete installed snapshot; it is not a substitute for package signing or host security.

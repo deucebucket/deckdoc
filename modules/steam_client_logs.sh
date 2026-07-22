@@ -19,8 +19,11 @@ if [ -d "$DUMP_DIR" ]; then
     if [ -n "$DUMP_FILES" ]; then DUMP_COUNT=$(printf '%s\n' "$DUMP_FILES" | wc -l); else DUMP_COUNT=0; fi
     echo "  Actual crash dump files: ${DUMP_COUNT}"
     if [ "$DUMP_COUNT" -gt 0 ]; then
-        echo "  Last 5 dumps:"
-        printf '%s\n' "$DUMP_FILES" | xargs -r stat -c '%Y %y %s %n' 2>/dev/null | sort -nr | head -5 | cut -d' ' -f2-
+        echo "  Dump filenames and paths are intentionally omitted from public-safe reports."
+        NEWEST_DUMP=$(printf '%s\n' "$DUMP_FILES" | xargs -r stat -c '%Y %s' 2>/dev/null | sort -nr | head -1 || true)
+        if [ -n "$NEWEST_DUMP" ]; then
+            echo "  Newest dump: epoch=$(awk '{print $1}' <<< "$NEWEST_DUMP") size_bytes=$(awk '{print $2}' <<< "$NEWEST_DUMP")"
+        fi
         RECENT_DUMPS=$(find "$DUMP_DIR" -mmin -60 -type f \( -iname '*.dmp' -o -iname '*.mdmp' -o -iname '*.core' -o -iname '*.crash' \) -print 2>/dev/null | wc -l)
         if [ "$RECENT_DUMPS" -gt 0 ]; then
             echo "  WARNING: ${RECENT_DUMPS} dumps created in the last hour. Active instability."
@@ -66,13 +69,7 @@ if [ -f "$STDOUT_LOG" ]; then
         ERROR_LINES=$(grep -ciE 'error|crash|fail|assert' "$STDOUT_LOG" 2>/dev/null || echo 0)
     fi
     echo "  Error/crash/fail references: ${ERROR_LINES}"
-    if [ "$ERROR_LINES" -gt 0 ]; then
-        if [ "$LOG_SIZE" -gt 10485760 ]; then
-            tail -1000 "$STDOUT_LOG" 2>/dev/null | grep -iE 'error|crash|fail|assert' | tail -10
-        else
-            grep -iE 'error|crash|fail|assert' "$STDOUT_LOG" 2>/dev/null | tail -10
-        fi
-    fi
+    if [ "$ERROR_LINES" -gt 0 ]; then echo "  Matching raw Steam log lines are omitted from public-safe reports."; fi
 else
     echo "  steam_stdout.txt not found."
 fi
@@ -97,7 +94,7 @@ if command -v find >/dev/null 2>&1; then
         echo "  Proton prefixes: $(ls -d "$STEAM_DIR"/*/ 2>/dev/null | wc -l) total"
         echo "  Lock files:      ${BROKEN_PREFIXES} (inventory only; presence does not prove a stalled or corrupt prefix)"
     else
-        echo "  Proton compatdata directory not found at ${STEAM_DIR}."
+        echo "  Proton compatdata directory not found for the active Steam session user."
     fi
 fi
 sync

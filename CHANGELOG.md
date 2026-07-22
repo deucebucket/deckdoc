@@ -7,6 +7,27 @@ All notable DeckDoc changes are recorded here. The project follows
 
 No unreleased changes.
 
+## [3.4.0] - 2026-07-21
+
+### Added
+
+- A versioned model and capability manifest that distinguishes Jupiter LCD, Galileo OLED, unknown
+  hardware, supported/readable evidence, inaccessible evidence, absence, and non-applicability.
+- Shared public-safe filtering for full reports, continuous-probe incidents, remediations, and Rescue
+  archives, applied before persistent log writes with no intentionally retained raw variant.
+- Adversarial privacy fixtures and model fixtures for Jupiter, Galileo, unknown, and inaccessible
+  evidence states.
+- A first-class RyuDeck application adapter that classifies guest startup stalls, active rendering,
+  stale title-cache suspicion, stalled telemetry, and renderer/process fatal markers without emitting
+  titles, IDs, paths, arguments, filenames, or raw app-log lines.
+
+### Changed
+
+- Hardware consumers now use discovered DRM, battery, storage, and Wi-Fi paths from the manifest
+  instead of assuming one fixed device path where discovery is available.
+- Core, Steam, filesystem, mount, and block evidence is minimized to diagnostic fields rather than
+  arbitrary filenames, paths, mount labels, or process inventories.
+
 ## [3.3.0] - 2026-07-21
 
 ### Added
@@ -71,7 +92,8 @@ No unreleased changes.
 
 - Initial Steam Deck hardware diagnostic scaffold for GPU, battery, thermals, NVMe, and filesystems.
 
-[Unreleased]: https://github.com/deucebucket/deckdoc/compare/v3.3.0...HEAD
+[Unreleased]: https://github.com/deucebucket/deckdoc/compare/v3.4.0...HEAD
+[3.4.0]: https://github.com/deucebucket/deckdoc/releases/tag/v3.4.0
 [3.3.0]: https://github.com/deucebucket/deckdoc/releases/tag/v3.3.0
 [3.2.0]: https://github.com/deucebucket/deckdoc/commit/6d31a545cdb947892d9e6179fb8188d5d26cff88
 [3.1.0]: https://github.com/deucebucket/deckdoc/pull/14

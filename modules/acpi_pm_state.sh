@@ -95,7 +95,7 @@ fi
 sync
 
 echo "--- Battery charge limit interaction ---"
-BAT_DIR="${POWER_SUPPLY_ROOT}/BAT1"
+BAT_DIR="${DECKDOC_BATTERY_PATH:-${POWER_SUPPLY_ROOT}/BAT1}"
 if [ ! -d "$BAT_DIR" ]; then
     BAT_DIR="${POWER_SUPPLY_ROOT}/BAT0"
 fi

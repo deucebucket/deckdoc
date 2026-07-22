@@ -1,7 +1,21 @@
 # Module reference
 
-All diagnostic modules run in parallel. Output order in the master report is filename/glob order, not
+The model/capability manifest runs first. The remaining diagnostic modules run in parallel and consume
+its discovered paths where integrated. Output order in the master report is filename/glob order, not
 incident order; use the timestamps inside journal excerpts.
+
+## System contract
+
+### `system_manifest.sh` -> `module_00_system_manifest.log` and `deckdoc_capabilities_*.json`
+
+Identifies the allowlisted Valve model/firmware and OS build, distinguishes Jupiter LCD from Galileo
+OLED, discovers primary evidence paths, and records each source as `supported_and_readable`,
+`supported_but_inaccessible`, `absent`, `not_applicable`, or `unknown`. Non-Valve DMI is not copied
+into reports. A temporary path handoff is mode `0600` and deleted immediately after the runner imports
+only known keys.
+
+Limitations: schema version 1 does not yet describe every driver, SteamOS slot, rescue environment, or
+module prerequisite. Unknown hardware remains unknown rather than receiving guessed Deck behavior.
 
 ## Hardware and kernel
 
@@ -11,7 +25,7 @@ Reads current-boot amdgpu errors, reset outcomes, historical dmesg matches, CPU 
 active GPU SCLK state. A low instantaneous frequency can be normal at idle; correlate it with sustained
 poor performance and load. A failed/skipped GPU reset is more serious than a successful recovery.
 
-Limitations: fixed CPU/GPU sysfs paths, no load-normalized trend sample, and current journal access may
+Limitations: fixed CPU frequency sysfs paths, no load-normalized trend sample, and current journal access may
 require root.
 
 ### `battery_pmic.sh` -> `module_battery.log`
@@ -32,9 +46,10 @@ sensor may not be the system fan.
 
 ### `storage_smart.sh` -> `module_storage.log`
 
-Runs NVMe SMART health and selected warning/error fields through `smartctl` for `/dev/nvme0n1`.
+Runs NVMe SMART health and selected warning/error fields through `smartctl` for the manifest-discovered
+primary NVMe.
 
-Limitations: fixed device path; USB, SD, or additional NVMe devices are not SMART-scanned.
+Limitations: USB, SD, additional NVMe, and non-NVMe replacement devices are not SMART-scanned.
 
 ### `fs_integrity.sh` -> `module_fs.log`
 
@@ -128,14 +143,35 @@ inventories Proton compatibility prefixes/lock files for the active user.
 
 Limitations: error-word counts contain false positives; a lock file is not automatically corruption.
 
+### `ryudeck_app.sh` -> `module_ryudeck.log`
+
+Detects the production RyuDeck install and profile, counts firmware content and per-title caches, then
+reads a bounded structured window from the latest runtime log. It distinguishes host initialization
+from the `emulation_running` stage, zero- versus nonzero-FPS progress, a runtime log that stopped
+advancing, background pipeline/cache rebuild signals, realtime-scheduler warnings, device loss,
+out-of-memory, and fatal process/guest markers. A guest that reaches emulation but produces at least
+30 zero-FPS samples and no nonzero frames is classified as `GUEST_STARTUP_STALL`; cache load evidence
+adds `STALE_TITLE_CACHE_SUSPECTED` as a reversible A/B hypothesis rather than a verdict.
+
+The module emits structured counters and signatures only. Game titles, title IDs, paths, filenames,
+launch arguments, account/controller IDs, and raw RyuDeck lines are intentionally omitted. The safe
+cache test is advisory: close RyuDeck, preserve only the affected cache as a backup, retry clean, and
+never delete saves or firmware as part of that test.
+
+Limitations: this is the first application-specific adapter, not proof that every app is covered.
+Firmware version alone does not establish compatibility, a cache rebuild can legitimately stutter,
+and software cannot confirm what physical pixels show. Historical logs are kept distinct from an
+active runtime.
+
 ### `probe_incidents.sh` -> `module_probe.log`
 
 Reports whether the optional continuous probe is installed/active and ingests the latest incident's
 metadata, trigger, volatile snapshot, and bounded journal tail. No probe means a normal “not installed”
 result, not a diagnostic failure.
 
-Limitations: incidents are unredacted; journal persistence and a functioning kernel/storage path are
-required; signature proximity is not causation. See [Continuous incident probe](Continuous-Incident-Probe.md).
+Limitations: journal persistence and a functioning kernel/storage path are required; signature
+proximity is not causation. Incidents are filtered before disk with no raw variant, but still require
+review before sharing. See [Continuous incident probe](Continuous-Incident-Probe.md).
 
 ### `mmc_sd_card.sh` -> `module_mmc.log`
 

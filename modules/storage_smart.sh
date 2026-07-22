@@ -4,7 +4,7 @@ set -uo pipefail
 echo "[MODULE: Storage SMART Health]"
 sync
 
-NVME_DEV="/dev/nvme0n1"
+NVME_DEV="${DECKDOC_PRIMARY_STORAGE:-/dev/nvme0n1}"
 
 if command -v smartctl >/dev/null 2>&1; then
     if [ -b "$NVME_DEV" ]; then

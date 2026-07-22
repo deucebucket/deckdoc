@@ -3,6 +3,13 @@ set -uo pipefail
 
 umask 077
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REDACTOR="${SCRIPT_DIR}/../lib/deckdoc-redact.sh"
+if [ ! -x "$REDACTOR" ]; then
+    echo "DeckDoc public-safe output filter is missing; refusing collection." >&2
+    exit 1
+fi
+
 OUTPUT_ROOT="/tmp"
 INSTALLED_DISK="/dev/nvme0n1"
 while [ "$#" -gt 0 ]; do
@@ -23,7 +30,8 @@ Usage: deckdoc-rescue-collect.sh [--output-dir PATH] [--installed-disk /dev/DEVI
 
 Collects live rescue-environment evidence and attempts read-only journal extraction from the installed
 disk through journalctl --image. It never mounts, repairs, unlocks, or writes the installed disk.
-The resulting archive is private and unredacted. /tmp is volatile; copy it before powering off.
+The archive is public-safe filtered before disk write, but should still be reviewed before sharing.
+/tmp is volatile; copy it before powering off.
 EOF
             exit 0
             ;;
@@ -59,9 +67,9 @@ run_section() {
     echo "rescue_boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo inaccessible)"
     echo "installed_disk=${INSTALLED_DISK}"
     echo "collection_policy=read-only-no-mount-no-repair"
-    echo "privacy=private-unredacted"
+    echo "privacy=public-safe-filtered-review-before-sharing"
     echo "transport=copy archive to removable media or transfer over authenticated docked Ethernet"
-} > "${CASE_DIR}/manifest.txt"
+} | "$REDACTOR" > "${CASE_DIR}/manifest.txt"
 
 {
     run_section "kernel" uname -a
@@ -72,8 +80,7 @@ run_section() {
     done
     run_section "PCI devices and drivers" lspci -nnk
     run_section "USB topology" lsusb -t
-    run_section "block topology" lsblk -o NAME,PATH,TYPE,TRAN,SIZE,RO,FSTYPE,FSVER,LABEL,MOUNTPOINTS
-    run_section "mounts" findmnt -lo SOURCE,TARGET,FSTYPE,OPTIONS
+    run_section "block topology" lsblk -o NAME,PATH,TYPE,TRAN,SIZE,RO,FSTYPE,FSVER
 
     echo "--- Type-C and PD exports ---"
     for port in /sys/class/typec/port[0-9]*; do
@@ -102,31 +109,31 @@ run_section() {
     done
     run_section "network link inventory" ip -details -brief link
     run_section "USB Ethernet candidates" sh -c 'for n in /sys/class/net/*; do [ -d "$n" ] || continue; printf "%s driver=%s state=%s\n" "$(basename "$n")" "$(basename "$(readlink -f "$n/device/driver" 2>/dev/null || echo unknown)")" "$(cat "$n/operstate" 2>/dev/null || echo inaccessible)"; done'
-} > "${CASE_DIR}/live-hardware.log" 2>&1
+} 2>&1 | "$REDACTOR" > "${CASE_DIR}/live-hardware.log"
 
 {
     run_section "rescue current-boot journal" journalctl -b 0 -o short-iso-precise --no-pager
     run_section "rescue kernel ring" dmesg -T
     if [ -d /sys/fs/pstore ]; then run_section "pstore inventory" find /sys/fs/pstore -maxdepth 1 -type f -printf '%f %s bytes\n'; fi
-} > "${CASE_DIR}/live-journal.log" 2>&1
+} 2>&1 | "$REDACTOR" > "${CASE_DIR}/live-journal.log"
 
 {
     run_section "NVMe smartctl" smartctl -x "$INSTALLED_DISK"
     if command -v nvme >/dev/null 2>&1; then run_section "NVMe smart log" nvme smart-log "$INSTALLED_DISK"; fi
-    run_section "block read-only flags" lsblk -o NAME,PATH,RO,SIZE,FSTYPE,MOUNTPOINTS "$INSTALLED_DISK"
-} > "${CASE_DIR}/storage-health.log" 2>&1
+    run_section "block read-only flags" lsblk -o NAME,PATH,RO,SIZE,FSTYPE "$INSTALLED_DISK"
+} 2>&1 | "$REDACTOR" > "${CASE_DIR}/storage-health.log"
 
 {
     echo "DeckDoc uses systemd's image reader; it does not mount or repair the installed filesystems."
     run_section "installed boot index" journalctl --image="$INSTALLED_DISK" --list-boots --no-pager
-} > "${CASE_DIR}/installed-boot-index.log" 2>&1
+} 2>&1 | "$REDACTOR" > "${CASE_DIR}/installed-boot-index.log"
 
 {
     run_section "installed previous boot" journalctl --image="$INSTALLED_DISK" -b -1 -o short-iso-precise --no-pager
     run_section "installed current/last boot" journalctl --image="$INSTALLED_DISK" -b 0 -o short-iso-precise --no-pager
-} > "${CASE_DIR}/installed-journals.log" 2>&1
+} 2>&1 | "$REDACTOR" > "${CASE_DIR}/installed-journals.log"
 
-if command -v efibootmgr >/dev/null 2>&1; then efibootmgr -v > "${CASE_DIR}/uefi-boot-entries.log" 2>&1 || true; fi
+if command -v efibootmgr >/dev/null 2>&1; then efibootmgr -v 2>&1 | "$REDACTOR" > "${CASE_DIR}/uefi-boot-entries.log" || true; fi
 
 (
     cd "$CASE_DIR" || exit 1
@@ -137,4 +144,4 @@ chmod 600 "$ARCHIVE"
 sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
 
 echo "DeckDoc Rescue capture complete: ${ARCHIVE}"
-echo "This archive is unredacted. Review it before sharing, and copy it out of /tmp before shutdown."
+echo "This archive was public-safe filtered before disk write. Review it before sharing, and copy it out of /tmp before shutdown."

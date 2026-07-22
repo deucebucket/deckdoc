@@ -3,7 +3,8 @@
 The optional DeckDoc probe preserves evidence that is easy to lose between a failure and a later full
 report. It does not repeatedly run every diagnostic module. One low-priority process follows the local
 system journal and remains blocked while no new record arrives. When a bounded GPU, display, SOF audio,
-wireless, storage, OOM, thermal, Gamescope, or resume signature appears, it captures one private incident.
+wireless, storage, OOM, thermal, Gamescope, or resume signature appears, it captures one public-safe
+filtered incident.
 
 ## What an incident contains
 
@@ -28,10 +29,11 @@ The normal `setup.sh` never installs or starts it. The system service is low-pri
 can write only its private state directory, uses a 60-second per-category cooldown, retains at most 25
 incidents, and caps each journal window at 2 MiB by default.
 
-Create a manual marker immediately after an odd symptom:
+Create a manual marker immediately after an odd symptom. The probe intentionally stores a fixed marker
+rather than user-entered free text:
 
 ```bash
-sudo /var/lib/deckdoc-probe/bin/deckdoc-probe.sh capture "black panel after wake"
+sudo /var/lib/deckdoc-probe/bin/deckdoc-probe.sh capture
 ```
 
 The next `sudo ./deckdoc.sh` automatically includes the latest incident through
@@ -49,9 +51,10 @@ permanent deletion and refuses to run while the service is active.
 
 ## Privacy
 
-State is mode `0700`; individual files are `0600`. It is still unredacted. Journals can contain
-usernames, paths, hostnames, network identifiers, command lines, chat text, tokens, or application
-content. Review and redact every incident before sharing. A storage cap limits size, not sensitivity.
+State is mode `0700`; individual files are `0600`. Every captured stream is passed through DeckDoc's
+public-safe filter before disk and no raw incident variant is retained. The probe also stores only a
+recent core count and ignores user-entered marker text. Review before sharing because arbitrary
+upstream journal formats can change; a storage cap limits size, not sensitivity.
 
 ## Performance boundary
 

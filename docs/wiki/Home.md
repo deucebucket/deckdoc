@@ -23,6 +23,8 @@ diagnostics on a physically unsafe device.
 7. [DeckDoc Rescue](DeckDoc-Rescue.md) — outside-OS evidence for a Deck that will not boot normally.
 8. [Privileged diagnostic authorization](Privileged-Diagnostic-Authorization.md) — approve an exact
    read-only command set once without sharing a password.
+9. [Application diagnostics](Application-Diagnostics.md) — separate app, guest/runtime, OS/session,
+   and hardware failure boundaries.
 
 ## Find your symptom
 
@@ -30,6 +32,7 @@ diagnostics on a physically unsafe device.
 
 - [Recovery, boot failure, and escalation](Recovery-and-Escalation.md)
 - [Crashes, GPU hangs, page faults, and memory pressure](Crashes-GPU-and-Memory.md)
+- [Application diagnostics and RyuDeck runtime tracing](Application-Diagnostics.md)
 - [Reading retained core dumps and current-boot crashes](Reading-DeckDoc-Reports.md#crashes-and-retained-history)
 
 ### Audio, network, and sleep

@@ -17,7 +17,7 @@ if command -v lsblk >/dev/null 2>&1; then
     fi
 
     if command -v findmnt >/dev/null 2>&1; then
-        MMC_MOUNTS=$(findmnt -lo SOURCE,TARGET,FSTYPE,SIZE 2>/dev/null | grep mmc || true)
+        MMC_MOUNTS=$(findmnt -lo SOURCE,FSTYPE,SIZE 2>/dev/null | grep mmc || true)
         if [ -n "$MMC_MOUNTS" ]; then
             echo "  Mounted mmc partitions:"
             echo "$MMC_MOUNTS"

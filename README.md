@@ -1,6 +1,6 @@
 # DeckDoc
 
-**Current source release: v3.3.0** · [Changelog](CHANGELOG.md) ·
+**Current source release: v3.4.0** · [Changelog](CHANGELOG.md) ·
 [Roadmap](ROADMAP.md) · [DeckMD](https://deucebucket.github.io/deckdoc/) ·
 [Diagnostic wiki](https://github.com/deucebucket/deckdoc/wiki)
 
@@ -9,13 +9,14 @@ larger question behind almost every Deck failure: **what actually failed, what e
 conclusion, and what is the safest next action?**
 
 It collects and correlates evidence across the APU/GPU, memory, storage and filesystems, battery and
-power, thermals and fan, Wi-Fi, audio, controls, Steam and Proton, Gamescope, suspend/resume, display,
-USB-C docks, and connected peripherals. It can capture a one-time system snapshot, preserve evidence
-from intermittent failures, inspect a docked hardware path, or collect from outside the installed OS.
-The result is one timestamped case that can separate likely application/configuration faults,
-SteamOS or driver faults, peripheral faults, and evidence that warrants hardware escalation.
+power, thermals and fan, Wi-Fi, audio, controls, Steam and Proton, Gamescope, applications,
+suspend/resume, display, USB-C docks, and connected peripherals. It can capture a one-time system
+snapshot, preserve evidence from intermittent failures, inspect a docked hardware path, diagnose a
+supported app's own structured runtime, or collect from outside the installed OS. The result is one
+timestamped case that can separate likely application/configuration faults, SteamOS or driver faults,
+peripheral faults, and evidence that warrants hardware escalation.
 
-The project currently ships 17 read-only diagnostic modules, an opt-in incident probe, dock/USB-C
+The project currently ships 19 read-only diagnostic modules, an opt-in incident probe, dock/USB-C
 analysis, an alpha rescue collector/image builder, a guided symptom checker, a diagnostic wiki, and
 two tightly guarded remediations. DeckDoc is diagnosis-first: its coverage is intentionally much
 broader than the small number of conditions it can safely change automatically.
@@ -33,6 +34,7 @@ paths as you answer, and keeps the complete grouped checklist behind **Browse al
 |---|---|
 | Boot and stability | Did the Deck fail before SteamOS, panic, freeze, restart, or lose only one service? |
 | Games and graphics | Did one title fail, did Gamescope restart, or did the AMD GPU fault and recover? |
+| Applications | Did a supported app fail before launch, reach its runtime but stop producing work, rebuild stale state, or record a renderer/process fatal? |
 | Memory and crashes | Was there an OOM kill, active pressure, swap churn, or a relevant new core dump? |
 | Storage | Is the NVMe or microSD reporting health, controller, filesystem, TRIM, or read-only errors? |
 | Power and thermals | Are battery, charging, PMIC, fan, temperature, or low-frequency signals abnormal? |
@@ -61,32 +63,35 @@ sudo ./deckdoc.sh
 ```
 
 Reports are written under `logs/`. The file named `deckdoc_master_report_<timestamp>.log` is the
-combined report; `module_*.log` files contain each subsystem's raw section.
+combined report; `module_*.log` files contain public-safe filtered subsystem sections, and
+`deckdoc_capabilities_<timestamp>.json` records the model and evidence-access contract.
 
-Before posting a report publicly, read [Collecting and sharing evidence](docs/wiki/Collecting-and-Sharing-Evidence.md).
-Network names/addresses, usernames, paths, process names, and game titles may be present.
+All collection modes filter credentials and common personal/device/network identifiers before any
+persistent log write, and do not keep an intentionally raw variant. Because upstream log formats can
+change, review a report before posting it. See
+[Collecting and sharing evidence](docs/wiki/Collecting-and-Sharing-Evidence.md).
 
 ## One project, five diagnostic modes
 
 | Mode | Best for | Output |
 |---|---|---|
-| Full report | Current system-wide snapshot | 17 correlated module logs plus one master report |
+| Full report | Current system-wide snapshot | Capability manifest, 18 subsystem logs, and one master report |
 | Continuous probe | Rare/transient failures | Trigger, pre/post journal window, and volatile incident state |
 | Dock A/B | Third-party dock, PD, USB, Ethernet, display failures | Topology, exported negotiation, connector, and reset evidence |
-| DeckDoc Rescue | Installed OS cannot boot or needs an outside-OS contrast | Private read-only rescue archive and installed journal image evidence |
+| DeckDoc Rescue | Installed OS cannot boot or needs an outside-OS contrast | Public-safe read-only rescue archive and installed journal image evidence |
 | DeckMD + wiki | User does not know which subsystem to test | Ranked symptom branches, known patterns, safe checks, and escalation route |
 
 ## Core commands
 
 | Command | Effect | Changes the system? |
 |---|---|---|
-| `sudo ./deckdoc.sh` | Run all 17 diagnostic modules | No; creates local logs |
+| `sudo ./deckdoc.sh` | Run all 19 diagnostic modules | No; creates local logs |
 | `./deckdoc.sh` | Run with reduced access | No; some checks may be incomplete |
 | `sudo ./probe/install-probe.sh install` | Opt in to the low-overhead incident watcher | Yes; installs/starts one constrained service |
 | `sudo ./probe/install-probe.sh uninstall` | Stop/remove watcher, preserving incidents | Yes; service files only |
-| `sudo ./bootprobe/deckdoc-rescue-collect.sh ...` | Collect outside-OS evidence from a compatible rescue environment | No writes to installed disk; creates private archive |
+| `sudo ./bootprobe/deckdoc-rescue-collect.sh ...` | Collect outside-OS evidence from a compatible rescue environment | No writes to installed disk; creates a filtered archive |
 | `sudo ./privileged/install-authorized.sh install` | Approve DeckDoc's exact read-only privileged operations once | Yes; root-owned snapshot and narrow sudoers rules |
-| `./privileged/deckdoc-authorized-client.sh report` | Run a complete authorized report later without sharing a password | No; creates a private local report |
+| `./privileged/deckdoc-authorized-client.sh report` | Run a complete authorized report later without sharing a password | No; creates a filtered local report |
 | `bash tests/test_runner.sh` | Run mocked regression tests | No production-device changes |
 
 The optional authorization does not give DeckDoc—or an agent—a password or general sudo access. It
@@ -99,6 +104,7 @@ snapshot or changing that allowlist requires another visible user approval. See
 
 | Area | Module | Evidence and signatures |
 |---|---|---|
+| System contract | `system_manifest.sh` | model/OS allowlist, LCD/OLED applicability, discovered devices, readable/inaccessible/absent evidence states |
 | GPU/APU | `gpu_apu.sh` | amdgpu ring timeouts, reset outcome, low CPU/GPU frequency state |
 | Display | `display_blackout.sh` | eDP status, EDID, backlight, CRTC, DRM planes, Gamescope, display warnings |
 | Dock/USB-C | `dock_usb_c.sh` | USB topology, Type-C/PD/Alt Mode exports, external displays, Ethernet, path errors |
@@ -113,6 +119,7 @@ snapshot or changing that allowlist requires another visible user approval. See
 | Memory | `memory_swap.sh` | MemAvailable, swap use, cumulative vs live I/O, current-boot OOM events |
 | Incident history | `probe_incidents.sh` | latest opt-in trigger, volatile snapshot, bounded journal window |
 | Steam/Proton | `steam_client_logs.sh` | real crash files, helper crash rate, Steam errors, prefix/lock inventory |
+| App runtime | `ryudeck_app.sh` | RyuDeck install/profile state, runtime stage, FPS progress, cache/pipeline signals, renderer/process fatal classes |
 | microSD | `mmc_sd_card.sh` | mmc presence/mounts, driver/ext4/TRIM errors, read-only state |
 | Suspend/resume | `acpi_pm_state.sh` | PM transitions/failures, fan-controller warnings, wake sources |
 | Vulkan translation | `dxvk_page_fault.sh` | AMD VM/UTCL2 page-fault class, process hints, timeouts, reset result |
@@ -154,7 +161,7 @@ The full interpretation guide is [Reading DeckDoc reports](docs/wiki/Reading-Dec
 
 ## Diagnosis first, narrow remediation second
 
-DeckDoc's main product is evidence and decision support. Seventeen modules, the probe, Rescue, DeckMD,
+DeckDoc's main product is evidence and decision support. Eighteen modules, the probe, Rescue, DeckMD,
 and the wiki diagnose far more conditions than DeckDoc modifies. Only two signature-specific
 remediations exist today:
 
@@ -189,12 +196,14 @@ CPU/GPU clocks, charging behavior, firmware, or GPU-reset sysfs nodes. See the
 
 ```text
 deckdoc.sh
-  |-- launches 17 diagnostic modules in parallel
-  |-- flushes module output into logs/module_*.log
+  |-- discovers the model/capability contract first
+  |-- launches 18 subsystem modules in parallel
+  |-- filters every module before writing logs/module_*.log
   |-- consolidates a timestamped master report
   `-- dispatches explicit remediation modes sequentially
 
 modules/                  diagnostic and remediation shell modules
+lib/                      shared public-safe output filtering
 probe/                    opt-in event-triggered watcher and constrained service installer
 bootprobe/                outside-OS collector and unsigned alpha ArchISO builder
 privileged/               one-time approved, exact-command diagnostic broker

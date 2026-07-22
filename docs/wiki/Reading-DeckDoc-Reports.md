@@ -5,11 +5,13 @@ correlation, not counting the words `WARNING` and `CRITICAL`.
 
 ## Report structure
 
-The timestamped master report contains all module sections. Per-module logs make it easier to share or
-compare one subsystem.
+The timestamped master report contains all module sections. Read the capability manifest first: it
+defines the detected model and whether each evidence source was readable, inaccessible, absent, not
+applicable, or unknown. Per-module logs make it easier to share or compare one subsystem.
 
 | Log | Module |
 |---|---|
+| `module_00_system_manifest.log` / `deckdoc_capabilities_*.json` | Model and capability contract |
 | `module_gpu.log` | GPU/APU |
 | `module_battery.log` | Battery/PMIC |
 | `module_thermal.log` | Thermal/fan |
