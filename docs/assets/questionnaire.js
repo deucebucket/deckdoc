@@ -152,19 +152,98 @@ window.DECKDOC_QUESTIONNAIRE = [
   }
 ];
 
+// The guided path starts broad, then reveals only the symptom families nested
+// beneath the selected category. Every primary symptom appears exactly once.
+window.DECKDOC_CATEGORIES = [
+  {
+    id: "screen_display",
+    code: "SCREEN",
+    title: "Screen & display",
+    description: "Black, dim, flickering, corrupted, or missing picture",
+    symptoms: ["display"]
+  },
+  {
+    id: "power_boot",
+    code: "POWER",
+    title: "Power, boot & charging",
+    description: "Won't start, boot loops, heat, fan, battery, or charging",
+    symptoms: ["boot", "charge-problem", "thermal"]
+  },
+  {
+    id: "games_performance",
+    code: "GAMES",
+    title: "Games & performance",
+    description: "Crashes, freezes, low FPS, stutter, or low clocks",
+    symptoms: ["crash", "performance"]
+  },
+  {
+    id: "sound_network",
+    code: "LINK",
+    title: "Sound & connectivity",
+    description: "Audio, microphone, Wi-Fi, internet, or resume trouble",
+    symptoms: ["audio", "network"]
+  },
+  {
+    id: "controls_dock",
+    code: "I/O",
+    title: "Controls & accessories",
+    description: "Buttons, touch, Bluetooth, docks, USB, or external gear",
+    symptoms: ["input", "dock"]
+  },
+  {
+    id: "storage_system",
+    code: "SYSTEM",
+    title: "Storage & system updates",
+    description: "NVMe, microSD, corrupt data, updates, rollback, or image health",
+    symptoms: ["storage", "update"]
+  }
+];
+
+// Selecting one side makes the other unavailable until the first answer is
+// cleared. These rules are symmetric and shared by guided and all-check views.
+window.DECKDOC_CONFLICTS = [
+  ["screen-backlight", "screen-no-light", "The LCD backlight cannot be both visibly on and visibly off."],
+  ["oled", "screen-backlight", "OLED models do not use the LCD backlight check."],
+  ["oled", "screen-no-light", "OLED models do not use the LCD backlight check."],
+  ["fan-zero", "fan-reacts", "A stopped fan conflicts with a fan that still reacts to load."],
+  ["device-missing", "interface-down", "A missing device cannot also be present in a DOWN state."],
+  ["device-missing", "connected-icon", "A missing device cannot still report connected."],
+  ["device-missing", "local-network", "A missing network device cannot still reach the local network."],
+  ["interface-down", "connected-icon", "A DOWN interface conflicts with an active connected state."],
+  ["interface-down", "local-network", "A DOWN interface conflicts with working local connectivity."],
+  ["no-response", "power-led", "No response includes no normal LED response."],
+  ["no-response", "sound-works", "No response conflicts with continuing audio."],
+  ["no-response", "input-works", "No response conflicts with controls or haptics still working."],
+  ["no-response", "ssh-works", "No response conflicts with a working SSH session."],
+  ["no-response", "stream-works", "No response conflicts with a live stream or recording."],
+  ["no-response", "fan-reacts", "No response conflicts with a fan reacting to load."],
+  ["whole-system", "sound-works", "A wholly unresponsive system conflicts with continuing audio."],
+  ["whole-system", "input-works", "A wholly unresponsive system conflicts with working controls."],
+  ["whole-system", "ssh-works", "A wholly unresponsive system conflicts with a working SSH session."],
+  ["whole-system", "stream-works", "A wholly unresponsive system conflicts with advancing frames."],
+  ["hard-lock", "input-works", "A hard lock conflicts with controls still being accepted."],
+  ["hard-lock", "ssh-works", "A hard lock conflicts with a working SSH session."],
+  ["hard-lock", "stream-works", "A hard lock conflicts with advancing frames."],
+  ["sig-no-errors", "sig-gpu-timeout", "No matching errors conflicts with a current-incident GPU timeout."],
+  ["sig-no-errors", "sig-sof", "No matching errors conflicts with a current-incident SOF failure."],
+  ["sig-no-errors", "sig-wifi-fw", "No matching errors conflicts with a current-incident firmware failure."],
+  ["sig-no-errors", "sig-ext4", "No matching errors conflicts with a current-incident filesystem error."],
+  ["sig-no-errors", "sig-smart", "No matching errors conflicts with a current SMART warning."]
+];
+
 // Ordered follow-ups define the progressive checklist. The first entries are
 // the highest-value branch separators for each primary symptom.
 window.DECKDOC_RELATED_CHECKS = {
-  display: ["sound-works", "screen-backlight", "screen-no-light", "input-works", "ssh-works", "stream-works", "external-works", "during-game", "after-wake", "first-after-days", "second-boot-works", "mode-switch", "dock-transition", "lcd", "oled"],
-  boot: ["no-response", "power-led", "sound-works", "logo-freeze", "boot-loop", "first-after-days", "second-boot-works", "after-update", "firmware-also-fails", "rescue-works"],
-  crash: ["one-title", "all-titles", "during-game", "game-launch", "returns-library", "hard-lock", "ssh-works", "sig-gpu-timeout", "sig-gpu-reset-ok", "sig-gpu-reset-fail", "sig-oom"],
-  audio: ["after-wake", "device-missing", "audio-route", "sig-sof", "lcd", "oled", "bluetooth-device"],
-  network: ["after-wake", "device-missing", "interface-down", "connected-icon", "local-network", "sig-wifi-fw", "docked", "vpn"],
-  thermal: ["fan-zero", "hot-now", "under-load", "after-wake", "while-charging", "charge-limit", "sig-hot-fan"],
-  "charge-problem": ["docked", "third-party-dock", "slow-charge", "battery-jump", "while-charging", "battery-only", "port-damage"],
-  storage: ["micro-sd", "replacement-ssd", "device-missing", "read-only", "io-errors", "sig-ext4", "sig-smart", "full-disk"],
-  dock: ["third-party-dock", "official-dock", "multi-dock-failure", "external-display-fails", "ethernet-drops", "charge-problem", "dock-transition", "known-good-accessory", "sig-dock"],
-  input: ["one-title", "one-control", "firmware-also-fails", "after-wake", "bluetooth-pair", "bluetooth-latency", "touch-phantom"],
-  performance: ["one-title", "all-titles", "under-load", "low-clocks", "stutter-warm", "sig-live-swap", "sig-oom"],
-  update: ["after-update", "boot-loop", "previous-image-fixes", "stable-fixes", "immutable-root", "rescue-works"]
+  display: ["sound-works", "screen-backlight", "screen-no-light", "input-works", "ssh-works", "stream-works", "external-works", "whole-system", "during-game", "after-wake", "first-after-days", "second-boot-works", "mode-switch", "dock-transition", "lcd", "oled", "sig-display-gap", "sig-panel-incomplete", "sig-gpu-timeout", "sig-no-errors"],
+  boot: ["no-response", "power-led", "sound-works", "logo-freeze", "boot-loop", "cold-boot", "first-after-days", "second-boot-works", "after-update", "firmware-also-fails", "rescue-works", "lcd", "oled", "sig-no-errors", "sig-inaccessible"],
+  crash: ["one-title", "all-titles", "desktop-too", "during-game", "game-launch", "returns-library", "hard-lock", "ssh-works", "after-update", "after-plugin", "plugins-off-fixes", "sig-gpu-timeout", "sig-gpu-reset-ok", "sig-gpu-reset-fail", "sig-page-fault", "sig-gamescope-core", "sig-oom"],
+  audio: ["after-wake", "device-missing", "audio-route", "sig-sof", "lcd", "oled", "bluetooth-device", "restart-fixes", "sig-no-errors"],
+  network: ["after-wake", "device-missing", "interface-down", "connected-icon", "local-network", "sig-wifi-fw", "docked", "vpn", "restart-fixes", "sig-no-errors"],
+  thermal: ["fan-zero", "fan-reacts", "hot-now", "under-load", "idle", "after-wake", "while-charging", "charge-limit", "sig-hot-fan", "repro-always", "repro-rare"],
+  "charge-problem": ["docked", "handheld", "third-party-dock", "official-dock", "slow-charge", "battery-jump", "while-charging", "battery-only", "port-damage", "known-good-accessory", "repro-always", "repro-rare"],
+  storage: ["micro-sd", "replacement-ssd", "device-missing", "read-only", "io-errors", "sig-ext4", "sig-smart", "sig-btrfs", "full-disk", "repro-always", "repro-rare"],
+  dock: ["third-party-dock", "official-dock", "multi-dock-failure", "external-display-fails", "ethernet-drops", "charge-problem", "dock-transition", "display-hotplug", "known-good-accessory", "other-deck", "sig-dock"],
+  input: ["one-title", "one-control", "firmware-also-fails", "after-wake", "bluetooth-device", "bluetooth-pair", "bluetooth-latency", "touch-phantom", "restart-fixes", "repro-always", "repro-rare"],
+  performance: ["one-title", "all-titles", "under-load", "low-clocks", "stutter-warm", "after-update", "after-plugin", "plugins-off-fixes", "sig-live-swap", "sig-oom", "sig-gpu-timeout"],
+  update: ["after-update", "boot-loop", "logo-freeze", "previous-image-fixes", "stable-fixes", "immutable-root", "rescue-works", "full-disk", "sig-inaccessible"]
 };

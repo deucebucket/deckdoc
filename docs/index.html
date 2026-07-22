@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#0b0d0f">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>DeckMD — Steam Deck symptom checker by DeckDoc</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/styles.css">
   <script defer src="./assets/questionnaire.js"></script>
   <script defer src="./assets/knowledge.js"></script>
@@ -31,11 +32,10 @@
       <div class="hero-copy">
         <p class="overline">Steam Deck symptom intelligence · runs entirely in your browser</p>
         <h1 id="hero-title">Don’t guess the fix.<br><em>Narrow the failure.</em></h1>
-        <p class="hero-lede">A symptom can cross six layers before it reaches your screen. Check what
-          happened, what survived, and when it changed. DeckMD ranks the next diagnostic branch and
-          shows the evidence needed to confirm it.</p>
+        <p class="hero-lede">Start with one broad problem. DeckMD asks only the connected questions
+          that help separate the likely paths, then shows what evidence would confirm them.</p>
         <div class="hero-actions">
-          <a class="button primary" href="#checker">Open the full checklist</a>
+          <a class="button primary" href="#checker">Start symptom check</a>
           <a class="button ghost" href="https://github.com/deucebucket/deckdoc/wiki/Hardware-Failure-Decision-Guide">How hardware is decided</a>
         </div>
         <ul class="trust-row" aria-label="Privacy and safety commitments">
@@ -55,11 +55,11 @@
     <section class="checker-shell" id="checker" aria-labelledby="checker-title">
       <div class="checker-topbar">
         <div>
-          <p class="overline">Interactive triage matrix</p>
-          <h2 id="checker-title">Build the incident fingerprint</h2>
+          <p class="overline">Guided symptom check</p>
+          <h2 id="checker-title">What’s going wrong?</h2>
         </div>
         <div class="progress-block">
-          <span><b id="answered-count">0</b> of <b id="group-count">8</b> sections touched</span>
+          <span id="progress-label">Choose a category to begin</span>
           <div class="progress-track" aria-hidden="true"><i id="progress-bar"></i></div>
         </div>
       </div>
@@ -69,23 +69,32 @@
         <div><strong>Stop software troubleshooting.</strong><p id="safety-copy"></p></div>
       </div>
 
-      <section class="suggestion-panel" aria-labelledby="suggestion-title">
-        <div class="suggestion-heading">
-          <div><p class="overline">Adaptive follow-up</p><h3 id="suggestion-title">Next best checks</h3></div>
-          <p id="suggestion-explainer">Choose a primary symptom and DeckMD will offer the answers that split its major branches.</p>
+      <section class="guided-triage" aria-label="Guided symptom questions">
+        <div class="path-bar">
+          <div>
+            <span class="path-label">Your path</span>
+            <div class="path-trail" id="path-trail" aria-live="polite"><span>Start</span></div>
+          </div>
+          <button class="text-button danger-text" id="reset-all" type="button">Start over</button>
         </div>
-        <div class="suggestion-rail" id="suggestion-rail" aria-live="polite"></div>
+        <div class="guided-stage" id="guided-stage" aria-live="polite"></div>
       </section>
 
-      <div class="checker-tools">
-        <label class="search-box" for="option-search"><span aria-hidden="true">⌕</span>
-          <input id="option-search" type="search" placeholder="Find a checklist item…" autocomplete="off">
-        </label>
-        <button class="text-button" id="expand-all" type="button">Expand all sections</button>
-        <button class="text-button danger-text" id="reset-all" type="button">Reset</button>
-      </div>
-
-      <div class="question-stack" id="question-stack"></div>
+      <details class="all-checks" id="all-checks">
+        <summary>
+          <span><strong>Browse all checks</strong><small>Use the complete grouped list when the guided path does not fit.</small></span>
+          <span class="all-checks-count">128 checks</span>
+        </summary>
+        <div class="all-checks-body">
+          <div class="checker-tools">
+            <label class="search-box" for="option-search"><span aria-hidden="true">⌕</span>
+              <input id="option-search" type="search" placeholder="Find any symptom or check…" autocomplete="off">
+            </label>
+            <button class="text-button" id="expand-all" type="button">Expand all groups</button>
+          </div>
+          <div class="question-stack" id="question-stack"></div>
+        </div>
+      </details>
 
       <section class="results" id="results" aria-labelledby="results-title">
         <div class="results-header">

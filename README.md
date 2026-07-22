@@ -19,8 +19,9 @@ broader than the small number of conditions it can safely change automatically.
 > Start with the [DeckDoc diagnostic center](docs/wiki/Home.md) if you have a symptom and do not yet
 > know which subsystem is responsible.
 
-Or use [DeckMD](https://deucebucket.github.io/deckdoc/), the private in-browser checklist, to turn a
-symptom into ranked diagnostic branches and the next evidence to collect.
+Or use [DeckMD](https://deucebucket.github.io/deckdoc/), the private in-browser symptom checker. It
+starts with six broad categories, reveals only the connected follow-up questions, removes conflicting
+paths as you answer, and keeps the complete grouped checklist behind **Browse all checks**.
 
 ## Problems DeckDoc investigates
 

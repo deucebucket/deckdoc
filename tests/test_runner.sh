@@ -588,12 +588,15 @@ if command -v node >/dev/null 2>&1; then
     node --check "${DECKDOC_DIR}/docs/assets/knowledge.js"
     node --check "${DECKDOC_DIR}/docs/assets/app.js"
     node "${DECKDOC_DIR}/tests/validate_deckmd.js"
-    echo "  PASS: DeckMD facts, progressive suggestions, rules, and wiki routes are internally consistent."
-elif grep -Fq 'display: ["sound-works", "screen-backlight", "screen-no-light", "input-works", "ssh-works", "stream-works", "external-works", "during-game", "after-wake"' \
+    echo "  PASS: DeckMD categories, nested questions, contradictions, rules, and wiki routes are internally consistent."
+elif grep -Fq 'window.DECKDOC_CATEGORIES = [' "${DECKDOC_DIR}/docs/assets/questionnaire.js" && \
+     grep -Fq '["no-response", "ssh-works"' "${DECKDOC_DIR}/docs/assets/questionnaire.js" && \
+     grep -Fq 'display: ["sound-works", "screen-backlight", "screen-no-light", "input-works", "ssh-works"' \
         "${DECKDOC_DIR}/docs/assets/questionnaire.js" && \
      grep -q 'const related = window.DECKDOC_RELATED_CHECKS' "${DECKDOC_DIR}/docs/assets/app.js" && \
+     grep -q 'Browse all checks' "${DECKDOC_DIR}/docs/index.html" && \
      grep -q 'No safe pattern match yet' "${DECKDOC_DIR}/docs/assets/app.js"; then
-    echo "  PASS: Required progressive-display and safe-unknown contracts are present."
+    echo "  PASS: Broad categories, contradictions, progressive display checks, all-check fallback, and safe-unknown contracts are present."
     echo "  NOTE: Full JavaScript/schema validation skipped because Node.js is not installed."
 else
     echo "  FAIL: DeckMD structural fallback contract is incomplete."
